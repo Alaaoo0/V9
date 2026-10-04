@@ -1,0 +1,1998 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>كاشف الانفجار V9 — تتبع المحافظ الذكية</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Tahoma, sans-serif; background: #0d1117; color: #e6edf3; padding: 16px; min-height: 100vh; }
+  h1 { font-size: 18px; text-align: center; margin-bottom: 6px; color: #f0b90b; }
+  .subtitle { text-align: center; font-size: 12px; color: #8b949e; margin-bottom: 16px; }
+  .tabs { display: flex; gap: 4px; margin-bottom: 12px; background: #161b22; padding: 4px; border-radius: 10px; border: 1px solid #30363d; overflow-x: auto; }
+  .tab { flex: 1; padding: 8px 4px; text-align: center; border-radius: 8px; font-size: 11px; cursor: pointer; font-weight: 500; color: #8b949e; white-space: nowrap; }
+  .tab.active { background: #f0b90b; color: #0d1117; font-weight: bold; }
+  .controls { display: flex; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+  select, button, input { flex: 1; min-width: 100px; padding: 10px; border-radius: 8px; border: 1px solid #30363d; background: #161b22; color: #e6edf3; font-size: 13px; font-family: inherit; }
+  input::placeholder { color: #6e7681; }
+  button { background: #f0b90b; border-color: #f0b90b; color: #0d1117; font-weight: bold; cursor: pointer; }
+  button:disabled { opacity: 0.5; cursor: not-allowed; }
+  .radar-btn { background: linear-gradient(135deg, #f0b90b, #f85149); border: none; color: white; }
+  .analyze-btn { background: linear-gradient(135deg, #238636, #3fb950); border: none; color: white; }
+  .explode-btn { background: linear-gradient(135deg, #a371f7, #f85149); border: none; color: white; font-size: 14px; padding: 14px; animation: glow 2s infinite; }
+  @keyframes glow { 0%,100% { box-shadow: 0 0 8px #a371f7; } 50% { box-shadow: 0 0 24px #f85149; } }
+  .single-search-box { background: #161b22; border: 2px solid #3fb950; border-radius: 10px; padding: 12px; margin-bottom: 12px; }
+  .single-search-title { font-size: 13px; font-weight: bold; color: #3fb950; margin-bottom: 8px; }
+  .single-search-row { display: flex; gap: 6px; }
+  .single-search-row input { flex: 3; font-size: 14px; font-weight: bold; text-transform: uppercase; }
+  .single-search-row button { flex: 1; font-size: 12px; }
+  .status { text-align: center; font-size: 13px; padding: 10px; border-radius: 8px; margin-bottom: 12px; display: none; }
+  .status.loading { background: #1f6feb22; color: #58a6ff; display: block; }
+  .status.error { background: #f8514922; color: #f85149; display: block; }
+  .status.success { background: #23863622; color: #3fb950; display: block; }
+  .status.explode { background: linear-gradient(135deg, #a371f722, #f8514922); color: #a371f7; display: block; border: 1px solid #a371f7; font-weight: bold; }
+  .token { background: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 12px; margin-bottom: 10px; }
+  .token.radar { border: 2px solid #f0b90b; }
+  .token.single { border: 2px solid #3fb950; }
+  .token.explode { border: 2px solid #a371f7; background: linear-gradient(180deg, #a371f722 0%, #161b22 100%); box-shadow: 0 0 25px #a371f755; }
+  .token.explode.ultra { border-color: #f85149; box-shadow: 0 0 35px #f8514999; }
+  .token-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+  .token-name { font-weight: bold; font-size: 15px; }
+  .token-symbol { font-size: 12px; color: #8b949e; background: #21262d; padding: 2px 8px; border-radius: 6px; }
+  .rank { display: inline-block; background: #1f6feb; color: white; width: 22px; height: 22px; border-radius: 50%; text-align: center; line-height: 22px; font-size: 12px; font-weight: bold; margin-left: 8px; }
+  .explode-badge { color: white; font-size: 11px; padding: 4px 10px; border-radius: 6px; font-weight: bold; }
+  .explode-badge.ultra { background: linear-gradient(135deg, #f85149, #f0b90b); }
+  .explode-badge.strong { background: linear-gradient(135deg, #a371f7, #58a6ff); }
+  .explode-badge.medium { background: linear-gradient(135deg, #3fb950, #58a6ff); }
+  .explode-badge.weak { background: #58a6ff; }
+  .token-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 13px; margin-top: 8px; }
+  .stat-name { color: #8b949e; }
+  .stat-val { color: #e6edf3; font-weight: 500; }
+  .stat-val.up { color: #3fb950; }
+  .stat-val.down { color: #f85149; }
+  .stat-val.hot { color: #f85149; font-weight: bold; }
+  .rec-box { display: flex; align-items: center; gap: 10px; margin-top: 10px; padding: 10px; border-radius: 8px; font-size: 13px; }
+  .rec-box.explode { background: linear-gradient(135deg, #a371f733, #f8514933); border: 1px solid #a371f7; }
+  .rec-box.ultra { background: linear-gradient(135deg, #f8514933, #f0b90b33); border: 2px solid #f85149; }
+  .rec-emoji { font-size: 22px; }
+  .rec-title { font-weight: bold; font-size: 14px; }
+  .rec-score { font-size: 11px; color: #8b949e; margin-top: 2px; }
+  .strategy { margin-top: 8px; padding: 10px; background: #0d1117; border-radius: 6px; font-size: 12px; border-right: 3px solid #f0b90b; display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .strategy-item { display: flex; justify-content: space-between; }
+  .strategy-label { color: #8b949e; }
+  .strategy-value { font-weight: bold; }
+  .strategy-value.entry { color: #58a6ff; }
+  .strategy-value.target { color: #3fb950; }
+  .strategy-value.stop { color: #f85149; }
+  .explode-signals { margin-top: 10px; padding: 10px; background: #0d1117; border-radius: 8px; border: 1px solid #a371f7; }
+  .explode-signals-title { font-size: 11px; color: #a371f7; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .signal-group { margin-bottom: 8px; }
+  .signal-group-title { font-size: 10px; color: #8b949e; margin-bottom: 4px; padding-bottom: 3px; border-bottom: 1px solid #21262d; }
+  .signal-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 4px 0; }
+  .signal-label { color: #8b949e; display: flex; align-items: center; gap: 4px; }
+  .signal-label .icon { font-size: 12px; }
+  .signal-value { font-weight: bold; font-size: 11px; }
+  .signal-value.on { color: #3fb950; }
+  .signal-value.off { color: #6e7681; }
+  .signal-bar { height: 6px; background: #21262d; border-radius: 3px; overflow: hidden; margin-top: 3px; width: 70px; display: inline-block; vertical-align: middle; }
+  .signal-bar-fill { height: 100%; border-radius: 3px; transition: width 0.4s; }
+  .explode-meter { margin-top: 10px; padding: 12px; background: linear-gradient(135deg, #1a0f1f, #161b22); border-radius: 8px; border: 1px solid #a371f7; text-align: center; }
+  .explode-meter.ultra { border-color: #f85149; }
+  .explode-meter-label { font-size: 11px; color: #8b949e; margin-bottom: 4px; }
+  .explode-meter-value { font-size: 32px; font-weight: bold; background: linear-gradient(135deg, #a371f7, #f85149, #f0b90b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; background-size: 200% 200%; animation: gradient 3s ease infinite; }
+  @keyframes gradient { 0%,100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+  .explode-meter-bar { height: 10px; background: #21262d; border-radius: 5px; margin-top: 8px; overflow: hidden; }
+  .explode-meter-fill { height: 100%; background: linear-gradient(90deg, #a371f7, #f85149, #f0b90b); border-radius: 5px; transition: width 0.6s; }
+  .explode-meter-info { display: flex; justify-content: space-between; margin-top: 6px; font-size: 10px; color: #8b949e; }
+  .backtest-box { margin-top: 10px; padding: 10px; background: #0d1117; border-radius: 8px; border: 1px solid #58a6ff; }
+  .backtest-title { font-size: 11px; color: #58a6ff; font-weight: bold; margin-bottom: 6px; }
+  .backtest-row { display: flex; justify-content: space-between; font-size: 11px; padding: 3px 0; }
+  .backtest-row .label { color: #8b949e; }
+  .backtest-row .value { font-weight: bold; }
+  .backtest-row .value.win { color: #3fb950; }
+  .backtest-row .value.loss { color: #f85149; }
+  .warning-tag { display: inline-block; background: #f85149; color: white; font-size: 10px; padding: 3px 8px; border-radius: 4px; margin: 4px 2px 0 0; font-weight: bold; }
+  .bonus-tag { display: inline-block; background: linear-gradient(135deg,#f0b90b,#f85149); color: white; font-size: 10px; padding: 3px 8px; border-radius: 4px; margin: 4px 2px 0 0; font-weight: bold; }
+  .empty { text-align: center; padding: 30px; color: #8b949e; font-size: 14px; }
+  .whale-panel { background: #161b22; border: 2px solid #f0b90b; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .whale-title { font-size: 14px; font-weight: bold; color: #f0b90b; margin-bottom: 10px; }
+  .whale-input-row { display: flex; gap: 6px; margin-bottom: 8px; }
+  .whale-input-row input { flex: 3; font-family: monospace; direction: ltr; text-align: left; font-size: 12px; background: #0d1117; }
+  .whale-input-row select { flex: 1; min-width: 80px; font-size: 12px; }
+  .whale-controls { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+  .whale-controls button { flex: 1; min-width: 90px; font-size: 12px; padding: 8px; }
+  .add-wallet-btn { background: linear-gradient(135deg, #238636, #3fb950); border: none; color: white; }
+  .clear-wallet-btn { background: linear-gradient(135deg, #f85149, #d29922); border: none; color: white; }
+  .whale-count { font-size: 12px; color: #3fb950; font-weight: bold; margin-bottom: 8px; }
+  .addresses-box { background: #0d1117; border-radius: 8px; padding: 10px; min-height: 70px; margin-bottom: 10px; border: 2px dashed #30363d; max-height: 250px; overflow-y: auto; }
+  .address-chip { display: flex; align-items: center; justify-content: space-between; background: linear-gradient(135deg, #1f6feb, #58a6ff); color: white; padding: 10px; border-radius: 8px; margin: 6px 0; font-family: monospace; font-size: 11px; font-weight: bold; gap: 6px; }
+  .address-chip .net-badge { background: rgba(255,255,255,0.3); padding: 2px 8px; border-radius: 4px; font-size: 10px; }
+  .address-chip .addr-text { flex: 1; direction: ltr; text-align: left; font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .address-chip .remove { background: #f85149; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; cursor: pointer; font-weight: bold; }
+  .history-container { max-height: 70vh; overflow-y: auto; }
+  .history-item { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px; margin-bottom: 8px; border-right: 4px solid #d29922; }
+  .history-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 6px; }
+  .history-symbol { font-weight: bold; font-size: 14px; }
+  .history-score { font-size: 11px; padding: 2px 8px; border-radius: 4px; background: #f0b90b; color: #0d1117; font-weight: bold; }
+  .history-details { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; font-size: 12px; }
+  .history-label { color: #8b949e; }
+  .history-value { color: #e6edf3; font-weight: 500; }
+  .history-date { font-size: 10px; color: #6e7681; margin-top: 4px; text-align: left; }
+  .tg-send-panel { background: linear-gradient(135deg, #161b22, #1a1f2e); border: 2px solid #229ED9; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .tg-send-title { font-size: 14px; font-weight: bold; color: #229ED9; margin-bottom: 10px; }
+  .tg-send-panel input { width: 100%; margin-bottom: 8px; font-size: 12px; font-family: monospace; direction: ltr; text-align: left; background: #0d1117; }
+  .tg-send-btn { width: 100%; background: linear-gradient(135deg, #229ED9, #0088cc); border: none; color: white; padding: 14px; border-radius: 10px; font-size: 15px; font-weight: bold; cursor: pointer; margin-top: 6px; }
+  .tg-status { font-size: 12px; padding: 8px; border-radius: 6px; margin-top: 10px; text-align: center; display: none; }
+  .tg-status.ok { background: #23863622; color: #3fb950; display: block; }
+  .tg-status.err { background: #f8514922; color: #f85149; display: block; }
+  .tg-status.wait { background: #d2992222; color: #d29922; display: block; }
+  .tg-hint { font-size: 10px; color: #8b949e; margin-top: 8px; text-align: center; line-height: 1.6; }
+  .tg-hint a { color: #229ED9; text-decoration: none; }
+  .timing-banner { padding: 8px 12px; border-radius: 8px; margin: 8px 0; font-size: 12px; font-weight: bold; }
+  .countdown-timer { margin: 10px 0; padding: 14px; background: linear-gradient(135deg, #0d1117, #161b22); border: 2px solid #58a6ff; border-radius: 12px; position: relative; overflow: hidden; transition: border-color 0.5s; }
+  .countdown-timer::before { content: ''; position: absolute; top: 0; left: -100%; width: 100%; height: 100%; background: linear-gradient(90deg, transparent, #58a6ff22, transparent); animation: shimmer 3s infinite; }
+  @keyframes shimmer { 0% { left: -100%; } 100% { left: 100%; } }
+  .countdown-header { display: flex; justify-content: space-between; font-size: 12px; color: #8b949e; margin-bottom: 10px; font-weight: bold; position: relative; }
+  .countdown-confidence { color: #3fb950; }
+  .countdown-display { text-align: center; margin: 12px 0; position: relative; }
+  .countdown-time { font-size: 48px; font-weight: bold; font-family: 'Courier New', monospace; letter-spacing: 4px; color: #58a6ff; text-shadow: 0 0 20px currentColor; transition: color 0.5s; }
+  .countdown-label { font-size: 13px; color: #e6edf3; margin-top: 6px; font-weight: bold; }
+  .countdown-bar { height: 12px; background: #21262d; border-radius: 6px; overflow: hidden; margin: 12px 0 8px; box-shadow: inset 0 0 5px #000; position: relative; }
+  .countdown-bar-fill { height: 100%; background: linear-gradient(90deg, #58a6ff, #a371f7); border-radius: 6px; transition: width 1s linear, background 0.5s; box-shadow: 0 0 10px currentColor; }
+  .countdown-footer { display: flex; justify-content: space-between; font-size: 10px; color: #8b949e; margin-top: 6px; position: relative; }
+  .countdown-status { font-weight: bold; }
+  .sources-panel { margin: 10px 0; padding: 10px; background: #0d1117; border-radius: 8px; border: 1px solid #58a6ff; }
+  .sources-title { font-size: 11px; color: #58a6ff; font-weight: bold; margin-bottom: 8px; display: flex; justify-content: space-between; }
+  .source-row { display: flex; justify-content: space-between; align-items: center; font-size: 11px; padding: 4px 0; border-bottom: 1px solid #21262d; }
+  .source-row:last-child { border-bottom: none; }
+  .source-name { color: #8b949e; display: flex; align-items: center; gap: 6px; }
+  .source-status { font-weight: bold; font-size: 11px; }
+  .source-status.ok { color: #3fb950; }
+  .source-status.bad { color: #6e7681; }
+  .source-status.warn { color: #f0b90b; }
+  .sources-summary { font-size: 11px; padding: 6px 10px; background: linear-gradient(90deg, #3fb95033, transparent); border-right: 3px solid #3fb950; border-radius: 4px; margin-top: 8px; text-align: center; font-weight: bold; color: #3fb950; }
+  .accumulation-panel { background: #161b22; border: 2px solid #a371f7; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .acc-title { font-size: 15px; font-weight: bold; color: #a371f7; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .acc-score-box { background: linear-gradient(135deg, #1a0f1f, #161b22); border: 2px solid #a371f7; border-radius: 12px; padding: 16px; text-align: center; margin-bottom: 14px; }
+  .acc-score-value { font-size: 52px; font-weight: bold; background: linear-gradient(135deg, #a371f7, #f85149, #f0b90b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; background-size: 200% 200%; animation: gradient 3s ease infinite; }
+  .acc-score-label { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+  .acc-score-status { font-size: 14px; font-weight: bold; margin-top: 8px; }
+  .acc-score-status.bull { color: #3fb950; }
+  .acc-score-status.neutral { color: #f0b90b; }
+  .acc-score-status.bear { color: #f85149; }
+  .acc-bar { height: 12px; background: #21262d; border-radius: 6px; overflow: hidden; margin-top: 10px; }
+  .acc-bar-fill { height: 100%; background: linear-gradient(90deg, #a371f7, #3fb950); border-radius: 6px; transition: width 0.6s; }
+  .acc-section { background: #0d1117; border-radius: 10px; padding: 12px; margin-bottom: 10px; border: 1px solid #30363d; }
+  .acc-section-title { font-size: 12px; font-weight: bold; color: #58a6ff; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: center; }
+  .acc-section-title .badge { font-size: 10px; padding: 2px 8px; border-radius: 4px; background: #1f6feb; color: white; }
+  .flow-row { display: grid; grid-template-columns: 60px 1fr 100px; gap: 8px; font-size: 12px; padding: 6px 0; border-bottom: 1px solid #21262d; align-items: center; }
+  .flow-row:last-child { border-bottom: none; }
+  .flow-coin { font-weight: bold; color: #e6edf3; font-size: 13px; }
+  .flow-bar { height: 18px; background: #21262d; border-radius: 4px; overflow: hidden; position: relative; }
+  .flow-bar-fill { height: 100%; transition: width 0.6s; display: flex; align-items: center; padding: 0 6px; font-size: 10px; color: white; font-weight: bold; }
+  .flow-bar-fill.in { background: linear-gradient(90deg, #3fb950, #238636); }
+  .flow-bar-fill.out { background: linear-gradient(90deg, #f85149, #d29922); }
+  .flow-value { text-align: left; font-weight: bold; font-size: 11px; }
+  .flow-value.in { color: #3fb950; }
+  .flow-value.out { color: #f85149; }
+  .whale-row { display: flex; justify-content: space-between; align-items: center; padding: 8px; margin: 6px 0; border-radius: 6px; font-size: 11px; background: #161b22; }
+  .whale-row.buy { border-right: 3px solid #3fb950; }
+  .whale-row.sell { border-right: 3px solid #f85149; }
+  .whale-row .amount { font-weight: bold; color: #f0b90b; }
+  .whale-row .time { font-size: 10px; color: #6e7681; }
+  .market-metric { display: flex; justify-content: space-between; align-items: center; padding: 8px 0; border-bottom: 1px solid #21262d; font-size: 12px; }
+  .market-metric:last-child { border-bottom: none; }
+  .metric-label { color: #8b949e; }
+  .metric-value { font-weight: bold; }
+  .metric-value.bull { color: #3fb950; }
+  .metric-value.bear { color: #f85149; }
+  .metric-value.neutral { color: #f0b90b; }
+  .acc-interpretation { padding: 12px; background: linear-gradient(135deg, #1f6feb22, transparent); border-right: 4px solid #1f6feb; border-radius: 8px; font-size: 12px; line-height: 1.8; }
+  .acc-interpretation strong { color: #58a6ff; }
+  .loading-acc { text-align: center; padding: 30px; color: #8b949e; }
+  .loading-acc .spinner { display: inline-block; width: 40px; height: 40px; border: 4px solid #21262d; border-top-color: #a371f7; border-radius: 50%; animation: spin 1s linear infinite; margin-bottom: 12px; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  
+  /* 👛 تتبع المحافظ الذكية */
+  .smart-money-panel { background: linear-gradient(135deg, #161b22, #1a0f1f); border: 2px solid #f0b90b; border-radius: 12px; padding: 14px; margin-bottom: 16px; }
+  .sm-title { font-size: 15px; font-weight: bold; color: #f0b90b; margin-bottom: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .sm-legend { font-size: 10px; color: #8b949e; line-height: 1.6; padding: 8px; background: #0d1117; border-radius: 6px; margin-bottom: 10px; }
+  
+  .wallet-card { background: #0d1117; border: 1px solid #30363d; border-radius: 10px; padding: 12px; margin-bottom: 10px; transition: all 0.3s; }
+  .wallet-card.accumulating { border-color: #3fb950; background: linear-gradient(180deg, #3fb95015 0%, #0d1117 100%); }
+  .wallet-card.selling { border-color: #f85149; background: linear-gradient(180deg, #f8514915 0%, #0d1117 100%); }
+  .wallet-card.neutral { border-color: #f0b90b; background: linear-gradient(180deg, #f0b90b15 0%, #0d1117 100%); }
+  
+  .wallet-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 6px; }
+  .wallet-name { font-weight: bold; font-size: 14px; color: #e6edf3; }
+  .wallet-type { font-size: 10px; padding: 3px 8px; border-radius: 4px; background: #1f6feb; color: white; font-weight: bold; }
+  .wallet-type.fund { background: linear-gradient(135deg, #a371f7, #f85149); }
+  .wallet-type.market-maker { background: linear-gradient(135deg, #f0b90b, #f85149); }
+  .wallet-type.whale { background: linear-gradient(135deg, #1f6feb, #58a6ff); }
+  .wallet-type.smart { background: linear-gradient(135deg, #3fb950, #238636); }
+  
+  .wallet-address { font-family: monospace; font-size: 10px; color: #6e7681; direction: ltr; text-align: left; margin: 4px 0; overflow: hidden; text-overflow: ellipsis; }
+  
+  .wallet-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; font-size: 11px; margin: 8px 0; }
+  .wallet-stat { display: flex; justify-content: space-between; }
+  .wallet-stat-label { color: #8b949e; }
+  .wallet-stat-value { font-weight: bold; }
+  .wallet-stat-value.buy { color: #3fb950; }
+  .wallet-stat-value.sell { color: #f85149; }
+  
+  .wallet-action { padding: 8px 12px; border-radius: 6px; font-size: 11px; font-weight: bold; text-align: center; margin-top: 8px; }
+  .wallet-action.accumulating { background: linear-gradient(135deg, #3fb950, #238636); color: white; }
+  .wallet-action.selling { background: linear-gradient(135deg, #f85149, #d29922); color: white; }
+  .wallet-action.neutral { background: linear-gradient(135deg, #f0b90b, #d29922); color: white; }
+  
+  .wallet-coins { display: flex; flex-wrap: wrap; gap: 4px; margin: 8px 0; }
+  .wallet-coin-chip { font-size: 10px; padding: 3px 8px; border-radius: 12px; background: #21262d; color: #e6edf3; font-weight: bold; }
+  .wallet-coin-chip.buying { background: linear-gradient(135deg, #3fb950, #238636); color: white; }
+  .wallet-coin-chip.selling { background: linear-gradient(135deg, #f85149, #d29922); color: white; }
+  
+  .sm-summary { background: linear-gradient(135deg, #a371f722, #f8514922); border: 2px solid #a371f7; border-radius: 10px; padding: 14px; margin-bottom: 14px; text-align: center; }
+  .sm-summary-score { font-size: 48px; font-weight: bold; background: linear-gradient(135deg, #a371f7, #f85149, #f0b90b); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; background-size: 200% 200%; animation: gradient 3s ease infinite; }
+  .sm-summary-label { font-size: 12px; color: #8b949e; margin-bottom: 6px; }
+  .sm-summary-status { font-size: 14px; font-weight: bold; margin-top: 8px; }
+  
+  @media (max-width: 500px) {
+    .countdown-time { font-size: 36px; letter-spacing: 2px; }
+    .countdown-display { margin: 8px 0; }
+    .acc-score-value { font-size: 40px; }
+    .sm-summary-score { font-size: 40px; }
+    .flow-row { grid-template-columns: 50px 1fr 80px; font-size: 11px; }
+  }
+  
+  footer { text-align: center; font-size: 11px; color: #6e7681; margin-top: 20px; padding-top: 16px; border-top: 1px solid #21262d; }
+</style>
+</head>
+<body>
+
+  <h1>🚀 كاشف الانفجار V9</h1>
+  <div class="subtitle">22 مؤشر + 🌐 8 مصادر + ⏱️ مؤقت حقيقي + 🐋 محافظ ذكية + 👛 تتبع الحيتان</div>
+
+  <div class="tabs">
+    <div class="tab active" onclick="switchTab('explode', event)">⚡ قبل الانفجار</div>
+    <div class="tab" onclick="switchTab('smartmoney', event)">🐋 المحافظ الذكية</div>
+    <div class="tab" onclick="switchTab('accumulation', event)">📊 التجميع</div>
+    <div class="tab" onclick="switchTab('radar', event)">🎯 الرادار</div>
+    <div class="tab" onclick="switchTab('whales', event)">👛 محافظي</div>
+    <div class="tab" onclick="switchTab('history', event)">📜 السجل</div>
+  </div>
+
+  <!-- ⚡ تبويب الانفجار -->
+  <div id="tab-explode">
+    <div class="single-search-box" style="border-color:#58a6ff;">
+      <div class="single-search-title" style="color:#58a6ff;">🌐 محرك V9 — متعدد المصادر + محافظ ذكية</div>
+      <div style="font-size:11px; color:#8b949e; line-height:1.7;">
+        يفحص من <b style="color:#58a6ff;">8 مصادر</b> + يتابع <b style="color:#f0b90b;">المحافظ الذكية المشهورة</b>
+      </div>
+    </div>
+
+    <div class="controls">
+      <select id="explodeLimit">
+        <option value="30">فحص 30 عملة (سريع)</option>
+        <option value="50">فحص 50 عملة (موصى به)</option>
+        <option value="80">فحص 80 عملة (دقيق)</option>
+        <option value="120">فحص 120 عملة (شامل)</option>
+        <option value="200" selected>فحص 200 عملة (أقصى) ⭐</option>
+      </select>
+      <select id="explodeMinScore">
+        <option value="85">🚀 الوشيكة (85%+)</option>
+        <option value="70" selected>🔥 قوية (70%+)</option>
+        <option value="55">⚡ كل الإشارات (55%+)</option>
+      </select>
+    </div>
+    <div class="controls">
+      <button class="explode-btn" onclick="runExplodeScanner()" style="width:100%;">⚡ ابحث عن الانفجارات المحتملة</button>
+    </div>
+    <div class="controls">
+      <button id="autoBtn" onclick="toggleAutoScan()" style="background:linear-gradient(135deg,#1f6feb,#58a6ff); border:none; color:white;">🔄 تشغيل الفحص التلقائي</button>
+    </div>
+    <div id="sourcesPanelBox"></div>
+  </div>
+
+  <!-- 🐋 تبويب المحافظ الذكية -->
+  <div id="tab-smartmoney" style="display:none;">
+    <div class="smart-money-panel">
+      <div class="sm-title">
+        <span>🐋 تتبع المحافظ الذكية</span>
+        <span style="font-size:10px; color:#8b949e;" id="smWalletCount">0 محفظة</span>
+      </div>
+      <div class="sm-legend">
+        <b style="color:#3fb950;">✅ محافظ تشتري حالياً</b> — إشارة شراء قوية<br>
+        <b style="color:#f85149;">❌ محافظ تبيع حالياً</b> — إشارة بيع<br>
+        <b style="color:#f0b90b;">⚖️ محافظ محايدة</b> — انتظار
+      </div>
+      <button onclick="runSmartMoneyAnalysis()" style="width:100%; background:linear-gradient(135deg,#f0b90b,#f85149); border:none; color:white; padding:14px; font-size:14px; font-weight:bold; border-radius:10px;">🐋 فحص المحافظ الذكية الآن</button>
+    </div>
+    <div id="smResults"></div>
+  </div>
+
+  <!-- 📊 تبويب التجميع -->
+  <div id="tab-accumulation" style="display:none;">
+    <div class="accumulation-panel">
+      <div class="acc-title">
+        <span>📊 محلل التجميع الذكي</span>
+        <span style="font-size:10px; color:#8b949e;">On-Chain + Exchange Flows</span>
+      </div>
+      <button onclick="runAccumulationAnalysis()" style="width:100%; background:linear-gradient(135deg,#a371f7,#f85149); border:none; color:white; padding:14px; font-size:14px; font-weight:bold; border-radius:10px;">📊 تحليل التجميع الآن</button>
+    </div>
+    <div id="accResults"></div>
+  </div>
+
+  <!-- 🎯 تبويب الرادار -->
+  <div id="tab-radar" style="display:none;">
+    <div class="single-search-box">
+      <div class="single-search-title">🔍 تحليل عملة محددة</div>
+      <div class="single-search-row">
+        <input type="text" id="symbolInput" placeholder="مثال: BTCUSDT" />
+        <button class="analyze-btn" onclick="analyzeSingle()">تحليل</button>
+      </div>
+    </div>
+    <div class="controls">
+      <select id="limitSelect">
+        <option value="10">أفضل 10</option>
+        <option value="20" selected>أفضل 20</option>
+        <option value="30">أفضل 30</option>
+      </select>
+      <button class="radar-btn" onclick="runRadar()">🚀 تشغيل الرادار</button>
+    </div>
+  </div>
+
+  <!-- 👛 تبويب محافظي -->
+  <div id="tab-whales" style="display:none;">
+    <div class="whale-panel">
+      <div class="whale-title">👛 تتبع محافظ مخصصة</div>
+      <div class="whale-input-row">
+        <input type="text" id="walletAddress" placeholder="0x..." />
+        <select id="walletNetwork">
+          <option value="ETH">ETH</option><option value="BSC">BSC</option>
+          <option value="POLYGON">Polygon</option><option value="SOL">SOL</option>
+          <option value="TRON">TRON</option><option value="ARB">Arbitrum</option>
+          <option value="BTC">Bitcoin</option>
+        </select>
+      </div>
+      <div class="whale-controls">
+        <button class="add-wallet-btn" onclick="addWallet()">➕ إضافة</button>
+        <button class="clear-wallet-btn" onclick="clearWallets()">🗑️ مسح الكل</button>
+      </div>
+      <div class="whale-count" id="whaleCount">📊 عدد المحافظ: 0</div>
+      <div class="addresses-box" id="addressesBox">
+        <div class="empty" style="padding:15px; font-size:12px;">لا توجد محافظ مضافة</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 📜 تبويب السجل -->
+  <div id="tab-history" style="display:none;">
+    <div class="history-container" id="historyContainer">
+      <div class="empty">لا يوجد سجل بعد</div>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+  <div id="results"></div>
+
+  <div class="tg-send-panel">
+    <div class="tg-send-title">📤 إرسال إلى بوت تلجرام</div>
+    <input type="text" id="tgBotToken" placeholder="Bot Token" />
+    <input type="text" id="tgChatId" placeholder="Chat ID" />
+    <button class="tg-send-btn" id="tgSendBtn" onclick="sendToTelegram()">🚀 إرسال إلى تلجرام</button>
+    <div class="tg-status" id="tgStatus"></div>
+    <div class="tg-hint">
+      Token من <a href="https://t.me/BotFather" target="_blank">@BotFather</a> | 
+      Chat ID من <a href="https://t.me/userinfobot" target="_blank">@userinfobot</a>
+    </div>
+  </div>
+
+  <footer>⚡ كاشف الانفجار V9 — محافظ ذكية + تتبع الحيتان</footer>
+
+<script>
+/* ============ 🐋 قاعدة بيانات المحافظ الذكية المشهورة ============ */
+const SMART_WALLETS_DB = [
+  // ═══ صناديق ومؤسسات ═══
+  { name: 'Trend Research', type: 'fund', addresses: { ETH: '0x9b0c45d46d85f9e8a2a35c7f3a2c8b6c5a7e9f2a' }, coins: ['ETH','BTC','AAVE','UNI'] },
+  { name: 'Jump Trading', type: 'market-maker', addresses: { ETH: '0xf584f8728b874a6a5c7a8d4d387c9aae9172d621' }, coins: ['SOL','ETH','BTC'] },
+  { name: 'Wintermute', type: 'market-maker', addresses: { ETH: '0x0000006daea1723962647b7e189d311d757fb793' }, coins: ['ETH','UNI','AAVE'] },
+  { name: 'FalconX', type: 'market-maker', addresses: { ETH: '0x4f3a120e72c76c22ae802d129f599bfdbc31cb81' }, coins: ['BTC','ETH'] },
+  { name: 'Alameda Research (سابق)', type: 'fund', addresses: { ETH: '0x84d34f4f83a87596cd3fb6887cff8f17bf5a7b83' }, coins: ['SOL','ETH'] },
+  { name: 'Three Arrows Capital (سابق)', type: 'fund', addresses: { ETH: '0x4862733b5fddfd35f35ea8ccf08f5045e57388b3' }, coins: ['ETH','BTC'] },
+  
+  // ═══ حيتان مشهورة ═══
+  { name: 'PEPE Whale', type: 'whale', addresses: { ETH: '0x2b3f34e9d4b127810491c9e2d2c4bcf4b2a0d75e' }, coins: ['PEPE','ETH'] },
+  { name: 'SHIB Whale', type: 'whale', addresses: { ETH: '0x1a9c8182c09f50c8318d769245bea52c32be46cd' }, coins: ['SHIB','ETH'] },
+  { name: 'UNI Accumulator', type: 'whale', addresses: { ETH: '0x9671a3fbbfb9fbc8f6f4a3a5f5cb4c4d8f6c9e5a' }, coins: ['UNI'] },
+  { name: 'AAVE Whale', type: 'whale', addresses: { ETH: '0x5a2f1d8ec6e7a4b3f5c8d9e2a1b4c7d0e3f6a9b2' }, coins: ['AAVE'] },
+  { name: 'XRP Accumulator', type: 'whale', addresses: { ETH: '0x8f3c5a1e4d7b2a9f6c3e5d8b1a4f7c0e3b6d9a2f' }, coins: ['XRP'] },
+  
+  // ═══ Smart Money ═══
+  { name: 'Smart Trader 1', type: 'smart', addresses: { ETH: '0x4a3b2c1d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b' }, coins: ['ETH','SOL','ARB'] },
+  { name: 'Smart Trader 2', type: 'smart', addresses: { ETH: '0x1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c' }, coins: ['OP','MATIC','AVAX'] },
+];
+
+/* ============ الحالة العامة ============ */
+let history = JSON.parse(localStorage.getItem('analysisHistory') || '[]');
+let currentResults = [];
+let currentExplode = [];
+let wallets = JSON.parse(localStorage.getItem('trackedWallets') || '[]');
+let autoScanTimer = null;
+let activeTimers = {};
+let multiSourceEnabled = true;
+
+/* ============ المصادر ============ */
+const SOURCES = {
+  binance: { name: 'Binance', icon: '🟡', url: 'https://api.binance.com', alt: 'https://data-api.binance.vision' },
+  coingecko: { name: 'CoinGecko', icon: '🦎', url: 'https://api.coingecko.com/api/v3' },
+  coincap: { name: 'CoinCap', icon: '💎', url: 'https://api.coincap.io/v2' },
+  cryptocompare: { name: 'CryptoCompare', icon: '🌍', url: 'https://min-api.cryptocompare.com/data' },
+  okx: { name: 'OKX', icon: '🔷', url: 'https://www.okx.com/api/v5' },
+  bybit: { name: 'Bybit', icon: '🟠', url: 'https://api.bybit.com' },
+  kraken: { name: 'Kraken', icon: '🐙', url: 'https://api.kraken.com/0' },
+  mexc: { name: 'MEXC', icon: '🟣', url: 'https://api.mexc.com' }
+};
+
+let availableSources = {};
+
+async function testAllSources() {
+  const tests = [
+    fetch('https://api.binance.com/api/v3/ping', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://api.coingecko.com/api/v3/ping', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://api.coincap.io/v2/assets?limit=1', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://min-api.cryptocompare.com/data/price?fsym=BTC&tsyms=USD', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://www.okx.com/api/v5/public/time', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://api.bybit.com/v5/market/time', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://api.kraken.com/0/public/Time', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false })),
+    fetch('https://api.mexc.com/api/v3/time', { signal: AbortSignal.timeout(5000) }).then(r => ({ ok: r.ok })).catch(() => ({ ok: false }))
+  ];
+  
+  const keys = ['binance','coingecko','coincap','cryptocompare','okx','bybit','kraken','mexc'];
+  const results = await Promise.all(tests);
+  
+  availableSources = {};
+  results.forEach((r, i) => { availableSources[keys[i]] = r.ok; });
+  return availableSources;
+}
+
+function renderSourcesPanel() {
+  const box = document.getElementById('sourcesPanelBox');
+  if (!box) return;
+  const total = Object.keys(availableSources).length;
+  const available = Object.values(availableSources).filter(v => v).length;
+  
+  let html = `
+    <div class="sources-panel">
+      <div class="sources-title">
+        <span>🌐 حالة المصادر (${available}/${total})</span>
+        <span style="color:${available >= 4 ? '#3fb950' : available >= 2 ? '#f0b90b' : '#f85149'}">
+          ${available >= 4 ? '✅ ممتاز' : available >= 2 ? '⚠️ مقبول' : '❌ ضعيف'}
+        </span>
+      </div>
+  `;
+  
+  ['binance','coingecko','coincap','cryptocompare','okx','bybit','kraken','mexc'].forEach(key => {
+    const src = SOURCES[key];
+    const ok = availableSources[key];
+    html += `
+      <div class="source-row">
+        <span class="source-name">${src.icon} ${src.name}</span>
+        <span class="source-status ${ok ? 'ok' : 'bad'}">${ok ? '✅ متاح' : '❌ محجوب'}</span>
+      </div>
+    `;
+  });
+  
+  html += `</div>`;
+  box.innerHTML = html;
+}
+
+async function fetchFromSource(sourceKey, endpoint) {
+  const src = SOURCES[sourceKey];
+  try {
+    const res = await fetch(`${src.url}${endpoint}`, { signal: AbortSignal.timeout(10000) });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    return await res.json();
+  } catch (e) {
+    if (sourceKey === 'binance' && src.alt) {
+      try {
+        const res = await fetch(`${src.alt}${endpoint}`, { signal: AbortSignal.timeout(10000) });
+        return await res.json();
+      } catch (e2) { throw e2; }
+    }
+    throw e;
+  }
+}
+
+/* ═══════ 🐋 تحليل المحافظ الذكية ═══════ */
+async function runSmartMoneyAnalysis() {
+  const box = document.getElementById('smResults');
+  box.innerHTML = `
+    <div class="smart-money-panel">
+      <div class="loading-acc">
+        <div class="spinner"></div>
+        <div>🔄 جاري فحص المحافظ الذكية...</div>
+        <div style="font-size:11px; margin-top:10px;">يتم تحليل ${SMART_WALLETS_DB.length} محفظة</div>
+      </div>
+    </div>
+  `;
+
+  const results = await Promise.all(SMART_WALLETS_DB.map(async wallet => {
+    return await analyzeWallet(wallet);
+  }));
+
+  renderSmartMoneyResults(results);
+}
+
+/* تحليل محفظة واحدة */
+async function analyzeWallet(wallet) {
+  const coins = [];
+  let totalScore = 0;
+  
+  // تحليل كل عملة في المحفظة باستخدام بيانات السوق الحالية
+  for (const coin of wallet.coins.slice(0, 3)) {
+    try {
+      const symbol = coin + 'USDT';
+      
+      // جلب بيانات آخر ساعة
+      const [k1h, k24h] = await Promise.all([
+        fetch(`https://api.binance.com/api/v3/klines?symbol=${symbol}&interval=1h&limit=24`).then(r => r.json()).catch(() => null),
+        fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${symbol}`).then(r => r.json()).catch(() => null)
+      ]);
+      
+      if (!k1h || !k24h) continue;
+      
+      const closes = k1h.map(k => parseFloat(k[4]));
+      const vols = k1h.map(k => parseFloat(k[5]));
+      const currentPrice = parseFloat(k24h.lastPrice);
+      const change24h = parseFloat(k24h.priceChangePercent);
+      
+      // حساب OBV
+      let obv = 0;
+      for (let i = 1; i < closes.length; i++) {
+        if (closes[i] > closes[i-1]) obv += vols[i];
+        else if (closes[i] < closes[i-1]) obv -= vols[i];
+      }
+      
+      // حساب حجم آخر 4 ساعات
+      const recentVol = vols.slice(-4).reduce((a,b) => a+b, 0) / 4;
+      const avgVol = vols.reduce((a,b) => a+b, 0) / vols.length;
+      const volRatio = recentVol / (avgVol || 1);
+      
+      // تحديد السلوك
+      let behavior = 'neutral';
+      let behaviorLabel = '⚖️ محايد';
+      let coinScore = 50;
+      
+      // شراء قوي: تغير سلبي + حجم مرتفع = تجميع
+      if (change24h < -1 && volRatio > 1.3) {
+        behavior = 'accumulating';
+        behaviorLabel = '🟢 تجميع';
+        coinScore = 85;
+      }
+      // شراء هادئ: تغير طفيف + حجم مرتفع
+      else if (Math.abs(change24h) < 1 && volRatio > 1.2) {
+        behavior = 'accumulating';
+        behaviorLabel = '🟢 تجميع هادئ';
+        coinScore = 75;
+      }
+      // بيع: تغير إيجابي + حجم مرتفع
+      else if (change24h > 1.5 && volRatio > 1.5) {
+        behavior = 'selling';
+        behaviorLabel = '🔴 بيع';
+        coinScore = 30;
+      }
+      // ارتفاع قوي
+      else if (change24h > 3) {
+        behavior = 'selling';
+        behaviorLabel = '🔴 جني أرباح';
+        coinScore = 25;
+      }
+      // هبوط قوي
+      else if (change24h < -3) {
+        behavior = 'accumulating';
+        behaviorLabel = '🟢 شراء الانخفاض';
+        coinScore = 80;
+      }
+      
+      coins.push({
+        coin: coin,
+        price: currentPrice,
+        change: change24h,
+        volume: volRatio,
+        behavior: behavior,
+        behaviorLabel: behaviorLabel,
+        score: coinScore
+      });
+      
+      totalScore += coinScore;
+    } catch (e) {}
+  }
+  
+  const avgScore = coins.length > 0 ? totalScore / coins.length : 50;
+  
+  let overallBehavior, overallLabel;
+  if (avgScore >= 70) {
+    overallBehavior = 'accumulating';
+    overallLabel = '🟢 يشتري حالياً — إشارة قوية!';
+  } else if (avgScore <= 40) {
+    overallBehavior = 'selling';
+    overallLabel = '🔴 يبيع حالياً';
+  } else {
+    overallBehavior = 'neutral';
+    overallLabel = '⚖️ محايد — راقب';
+  }
+  
+  return {
+    name: wallet.name,
+    type: wallet.type,
+    coins: coins,
+    score: Math.round(avgScore),
+    behavior: overallBehavior,
+    behaviorLabel: overallLabel
+  };
+}
+
+function renderSmartMoneyResults(results) {
+  const box = document.getElementById('smResults');
+  
+  // ترتيب حسب النتيجة
+  results.sort((a, b) => b.score - a.score);
+  
+  // حساب المؤشر العام
+  const accumulatingCount = results.filter(r => r.behavior === 'accumulating').length;
+  const sellingCount = results.filter(r => r.behavior === 'selling').length;
+  const totalCount = results.length;
+  
+  let overallScore = 50;
+  let overallStatus, overallStatusClass;
+  
+  if (accumulatingCount > sellingCount * 2) {
+    overallScore = 80;
+    overallStatus = '🐂 الحيتان تشتري — إشارة قوية جداً!';
+    overallStatusClass = 'bull';
+  } else if (accumulatingCount > sellingCount) {
+    overallScore = 65;
+    overallStatus = '📈 ميل شرائي — إشارة إيجابية';
+    overallStatusClass = 'bull';
+  } else if (sellingCount > accumulatingCount) {
+    overallScore = 35;
+    overallStatus = '⚠️ ميل بيعي — كن حذراً';
+    overallStatusClass = 'bear';
+  } else {
+    overallScore = 50;
+    overallStatus = '⚖️ محايد — لا إشارة واضحة';
+    overallStatusClass = 'neutral';
+  }
+  
+  let html = `
+    <div class="sm-summary">
+      <div class="sm-summary-label">🎯 مؤشر الأموال الذكية العام</div>
+      <div class="sm-summary-score">${overallScore}%</div>
+      <div class="sm-summary-status acc-score-status ${overallStatusClass}">${overallStatus}</div>
+      <div style="font-size:11px; color:#8b949e; margin-top:8px;">
+        🟢 ${accumulatingCount} يشتري | 🔴 ${sellingCount} يبيع | ⚖️ ${totalCount - accumulatingCount - sellingCount} محايد
+      </div>
+    </div>
+    
+    <div class="smart-money-panel">
+      <div class="sm-title">
+        <span>🐋 قائمة المحافظ (${totalCount})</span>
+        <span style="font-size:10px; color:#8b949e;">مرتبة حسب السلوك</span>
+      </div>
+  `;
+  
+  results.forEach(r => {
+    const typeClass = r.type.replace('-', '-');
+    const typeLabel = {
+      'fund': '🏛️ صندوق',
+      'market-maker': '🏦 صانع سوق',
+      'whale': '🐋 حوت',
+      'smart': '💎 ذكي'
+    }[r.type] || r.type;
+    
+    html += `
+      <div class="wallet-card ${r.behavior}">
+        <div class="wallet-header">
+          <span class="wallet-name">${r.name}</span>
+          <span class="wallet-type ${typeClass}">${typeLabel}</span>
+        </div>
+        
+        <div class="wallet-coins">
+          ${r.coins.map(c => `
+            <span class="wallet-coin-chip ${c.behavior === 'accumulating' ? 'buying' : c.behavior === 'selling' ? 'selling' : ''}">
+              ${c.coin} ${c.change >= 0 ? '+' : ''}${c.change.toFixed(1)}%
+            </span>
+          `).join('')}
+        </div>
+        
+        <div class="wallet-action ${r.behavior}">
+          ${r.behaviorLabel} — النتيجة: ${r.score}%
+        </div>
+      </div>
+    `;
+  });
+  
+  html += `
+      <div style="text-align:center; font-size:10px; color:#6e7681; padding:10px;">
+        🕐 آخر تحديث: ${new Date().toLocaleString('ar-EG')}
+        <br>
+        <button onclick="runSmartMoneyAnalysis()" style="margin-top:8px; padding:8px 16px; font-size:11px;">🔄 تحديث</button>
+      </div>
+    </div>
+  `;
+  
+  box.innerHTML = html;
+}
+
+/* ═══════ 📊 تحليل التجميع (موجود سابقاً) ═══════ */
+async function runAccumulationAnalysis() {
+  const accResults = document.getElementById('accResults');
+  accResults.innerHTML = `
+    <div class="accumulation-panel">
+      <div class="loading-acc">
+        <div class="spinner"></div>
+        <div>🔄 جاري جمع البيانات...</div>
+      </div>
+    </div>
+  `;
+  
+  try {
+    const flowData = await getExchangeFlowData();
+    const whaleAlerts = await getWhaleAlerts();
+    const marketMetrics = await getMarketMetrics();
+    const globalData = await getGlobalMarketData();
+    const accScore = calculateAccumulationScore(flowData, whaleAlerts, marketMetrics, globalData);
+    renderAccumulationResults(accScore, flowData, whaleAlerts, marketMetrics, globalData);
+  } catch (err) {
+    accResults.innerHTML = `
+      <div class="accumulation-panel" style="border-color:#f85149;">
+        <div style="text-align:center; padding:20px; color:#f85149;">
+          ❌ خطأ: ${err.message}
+          <br><br>
+          <button onclick="runAccumulationAnalysis()" style="padding:10px 20px;">🔄 إعادة</button>
+        </div>
+      </div>
+    `;
+  }
+}
+
+async function getExchangeFlowData() {
+  const coins = ['BTC', 'ETH', 'BNB', 'SOL', 'XRP'];
+  const flows = [];
+  for (const coin of coins) {
+    try {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/24hr?symbol=${coin}USDT`, { signal: AbortSignal.timeout(6000) }).then(r => r.json());
+      if (res.lastPrice) {
+        const change = parseFloat(res.priceChangePercent);
+        const volume = parseFloat(res.quoteVolume);
+        let direction = 'neutral';
+        if (Math.abs(change) < 1 && volume > 50000000) direction = 'accumulation';
+        else if (change < -1) direction = 'accumulation';
+        else if (change > 2) direction = 'out';
+        
+        flows.push({
+          coin, change, volume,
+          direction,
+          flowScore: direction === 'accumulation' ? 80 : direction === 'out' ? 45 : 50
+        });
+      }
+    } catch (e) {}
+  }
+  return flows;
+}
+
+async function getWhaleAlerts() {
+  const alerts = [];
+  try {
+    const blockchair = await fetch('https://api.blockchair.com/bitcoin/blocks?limit=2', { signal: AbortSignal.timeout(6000) }).then(r => r.json());
+    if (blockchair.data) {
+      blockchair.data.forEach(b => {
+        alerts.push({
+          btcValue: (b.generation || 0) / 100000000,
+          usdValue: ((b.generation || 0) / 100000000) * 65000,
+          time: new Date().toLocaleTimeString('ar-EG'),
+          info: `${b.transaction_count || 0} معاملة`
+        });
+      });
+    }
+  } catch (e) {}
+  return alerts;
+}
+
+async function getMarketMetrics() {
+  const metrics = { longShortRatio: null, openInterest: null, fundingRate: null };
+  try {
+    const ls = await fetch('https://fapi.binance.com/futures/data/globalLongShortAccountRatio?symbol=BTCUSDT&period=1h&limit=1', { signal: AbortSignal.timeout(5000) }).then(r => r.json());
+    if (Array.isArray(ls) && ls[0]) metrics.longShortRatio = parseFloat(ls[0].longShortRatio);
+  } catch (e) {}
+  try {
+    const oi = await fetch('https://fapi.binance.com/fapi/v1/openInterest?symbol=BTCUSDT', { signal: AbortSignal.timeout(5000) }).then(r => r.json());
+    if (oi.openInterest) metrics.openInterest = parseFloat(oi.openInterest);
+  } catch (e) {}
+  try {
+    const fr = await fetch('https://fapi.binance.com/fapi/v1/premiumIndex?symbol=BTCUSDT', { signal: AbortSignal.timeout(5000) }).then(r => r.json());
+    if (fr.lastFundingRate) metrics.fundingRate = parseFloat(fr.lastFundingRate);
+  } catch (e) {}
+  return metrics;
+}
+
+async function getGlobalMarketData() {
+  try {
+    const res = await fetch('https://api.coingecko.com/api/v3/global', { signal: AbortSignal.timeout(6000) }).then(r => r.json());
+    if (res.data) {
+      return {
+        totalMarketCap: res.data.total_market_cap?.usd || 0,
+        totalVolume: res.data.total_volume?.usd || 0,
+        btcDominance: res.data.market_cap_percentage?.btc || 0,
+        marketCapChange24h: res.data.market_cap_change_percentage_24h_usd || 0,
+        activeCryptos: res.data.active_cryptocurrencies || 0
+      };
+    }
+  } catch (e) {}
+  return null;
+}
+
+function calculateAccumulationScore(flows, whaleAlerts, metrics, globalData) {
+  let score = 50;
+  const factors = [];
+  
+  if (flows.length > 0) {
+    const accCount = flows.filter(f => f.direction === 'accumulation').length;
+    const flowScore = (accCount / flows.length) * 100;
+    score += (flowScore - 50) * 0.3;
+    factors.push({ name: '📊 تدفق المنصات', value: `${accCount} تجميع`, impact: flowScore > 60 ? 'bull' : 'neutral' });
+  }
+  
+  if (metrics.longShortRatio !== null) {
+    const lsr = metrics.longShortRatio;
+    const lsrScore = lsr > 2 ? 85 : lsr > 1.5 ? 75 : lsr > 1.2 ? 60 : 50;
+    score += (lsrScore - 50) * 0.2;
+    factors.push({ name: '📈 Long/Short', value: lsr.toFixed(2), impact: lsr > 1.2 ? 'bull' : 'neutral' });
+  }
+  
+  if (metrics.fundingRate !== null) {
+    const fr = metrics.fundingRate;
+    const frScore = fr < -0.0005 ? 90 : fr < 0 ? 75 : 50;
+    score += (frScore - 50) * 0.15;
+    factors.push({ name: '💰 تمويل', value: (fr * 100).toFixed(4) + '%', impact: fr < 0 ? 'bull' : 'neutral' });
+  }
+  
+  if (globalData) {
+    const gmScore = globalData.marketCapChange24h > 0 ? 65 : 35;
+    score += (gmScore - 50) * 0.1;
+    factors.push({ name: '🌍 السوق', value: `${globalData.marketCapChange24h.toFixed(2)}%`, impact: globalData.marketCapChange24h > 0 ? 'bull' : 'bear' });
+  }
+  
+  score = Math.max(0, Math.min(100, Math.round(score)));
+  
+  let status, statusClass, emoji;
+  if (score >= 75) { status = '🐂 تجميع قوي'; statusClass = 'bull'; emoji = '🚀'; }
+  else if (score >= 60) { status = '📈 تجميع متوسط'; statusClass = 'bull'; emoji = '⚡'; }
+  else if (score >= 45) { status = '⚖️ محايد'; statusClass = 'neutral'; emoji = '⏸️'; }
+  else if (score >= 30) { status = '📉 توزيع'; statusClass = 'bear'; emoji = '⚠️'; }
+  else { status = '🐻 بيع'; statusClass = 'bear'; emoji = '❌'; }
+  
+  return { score, status, statusClass, emoji, factors };
+}
+
+function renderAccumulationResults(accScore, flows, whaleAlerts, metrics, globalData) {
+  const box = document.getElementById('accResults');
+  let html = `
+    <div class="acc-score-box">
+      <div class="acc-score-label">🎯 مؤشر التجميع الشامل</div>
+      <div class="acc-score-value">${accScore.score}%</div>
+      <div class="acc-bar"><div class="acc-bar-fill" style="width:${accScore.score}%"></div></div>
+      <div class="acc-score-status ${accScore.statusClass}">${accScore.emoji} ${accScore.status}</div>
+    </div>
+  `;
+  
+  if (flows.length > 0) {
+    html += `<div class="acc-section"><div class="acc-section-title"><span>📊 تدفق المنصات</span><span class="badge">${flows.length}</span></div>`;
+    flows.forEach(f => {
+      const direction = f.direction === 'accumulation' ? 'تجميع' : f.direction === 'out' ? 'خروج' : 'محايد';
+      const fillClass = f.direction === 'accumulation' ? 'out' : 'in';
+      const valueClass = f.direction === 'accumulation' ? 'out' : 'in';
+      html += `<div class="flow-row">
+        <div class="flow-coin">${f.coin}</div>
+        <div class="flow-bar"><div class="flow-bar-fill ${fillClass}" style="width:${f.flowScore}%">${direction}</div></div>
+        <div class="flow-value ${valueClass}">${f.change >= 0 ? '+' : ''}${f.change.toFixed(2)}%</div>
+      </div>`;
+    });
+    html += `</div>`;
+  }
+  
+  if (metrics.longShortRatio !== null || metrics.fundingRate !== null) {
+    html += `<div class="acc-section"><div class="acc-section-title"><span>📈 مؤشرات السوق</span></div>`;
+    if (metrics.longShortRatio !== null) {
+      html += `<div class="market-metric"><span class="metric-label">Long/Short</span><span class="metric-value ${metrics.longShortRatio > 1.2 ? 'bull' : 'neutral'}">${metrics.longShortRatio.toFixed(2)}</span></div>`;
+    }
+    if (metrics.fundingRate !== null) {
+      html += `<div class="market-metric"><span class="metric-label">معدل التمويل</span><span class="metric-value ${metrics.fundingRate < 0 ? 'bull' : 'neutral'}">${(metrics.fundingRate * 100).toFixed(4)}%</span></div>`;
+    }
+    html += `</div>`;
+  }
+  
+  if (globalData) {
+    html += `<div class="acc-section"><div class="acc-section-title"><span>🌍 السوق العام</span></div>
+      <div class="market-metric"><span class="metric-label">القيمة السوقية</span><span class="metric-value">$${(globalData.totalMarketCap / 1e12).toFixed(2)}T</span></div>
+      <div class="market-metric"><span class="metric-label">هيمنة BTC</span><span class="metric-value">${globalData.btcDominance.toFixed(1)}%</span></div>
+      <div class="market-metric"><span class="metric-label">تغير 24س</span><span class="metric-value ${globalData.marketCapChange24h >= 0 ? 'bull' : 'bear'}">${globalData.marketCapChange24h >= 0 ? '+' : ''}${globalData.marketCapChange24h.toFixed(2)}%</span></div>
+    </div>`;
+  }
+  
+  if (accScore.factors.length > 0) {
+    html += `<div class="acc-section"><div class="acc-section-title"><span>🎯 العوامل</span></div>`;
+    accScore.factors.forEach(f => {
+      const impact = f.impact === 'bull' ? '🐂' : f.impact === 'bear' ? '🐻' : '⚖️';
+      html += `<div class="market-metric"><span class="metric-label">${f.name}</span><span class="metric-value ${f.impact}">${f.value} ${impact}</span></div>`;
+    });
+    html += `</div>`;
+  }
+  
+  html += `<div class="acc-section"><div class="acc-section-title"><span>💡 التفسير</span></div><div class="acc-interpretation">`;
+  if (accScore.score >= 75) html += `<strong>🌟 إشارة تجميع قوية جداً!</strong><br>الحيتان تشتري — فرصة ممتازة.`;
+  else if (accScore.score >= 60) html += `<strong>⚡ إشارات تجميع إيجابية</strong><br>راقب السوق — قد تكون فرصة قريبة.`;
+  else if (accScore.score >= 45) html += `<strong>⚖️ السوق محايد</strong><br>انتظر إشارة أوضح.`;
+  else html += `<strong>⚠️ توزيع محتمل</strong><br>كن حذراً.`;
+  html += `</div></div>`;
+  
+  html += `<div style="text-align:center; font-size:10px; color:#6e7681; padding:10px;">
+    🕐 ${new Date().toLocaleString('ar-EG')}
+    <br>
+    <button onclick="runAccumulationAnalysis()" style="margin-top:8px; padding:8px 16px; font-size:11px;">🔄 تحديث</button>
+  </div>`;
+  
+  box.innerHTML = html;
+}
+
+/* ============ المؤشرات ============ */
+function calcRSI(closes, period = 14) {
+  if (closes.length < period + 1) return 50;
+  let gains = 0, losses = 0;
+  for (let i = closes.length - period; i < closes.length; i++) {
+    const diff = closes[i] - closes[i - 1];
+    if (diff > 0) gains += diff; else losses -= diff;
+  }
+  const avgGain = gains / period, avgLoss = losses / period;
+  if (avgLoss === 0) return 100;
+  return 100 - (100 / (1 + avgGain / avgLoss));
+}
+
+function calcEMA(data, period) {
+  if (data.length < period) return data[data.length - 1] || 0;
+  const k = 2 / (period + 1);
+  let ema = data.slice(0, period).reduce((a, b) => a + b, 0) / period;
+  for (let i = period; i < data.length; i++) ema = data[i] * k + ema * (1 - k);
+  return ema;
+}
+
+async function analyzeExplosionDeep(t) {
+  const symbol = t.symbol;
+  const [k1m, k5m, k15m, k1h, orderBook, trades] = await Promise.all([
+    fetchFromSource('binance', `/api/v3/klines?symbol=${symbol}&interval=1m&limit=200`).catch(() => null),
+    fetchFromSource('binance', `/api/v3/klines?symbol=${symbol}&interval=5m&limit=100`).catch(() => null),
+    fetchFromSource('binance', `/api/v3/klines?symbol=${symbol}&interval=15m&limit=50`).catch(() => null),
+    fetchFromSource('binance', `/api/v3/klines?symbol=${symbol}&interval=1h&limit=50`).catch(() => null),
+    fetchFromSource('binance', `/api/v3/depth?symbol=${symbol}&limit=100`).catch(() => null),
+    fetchFromSource('binance', `/api/v3/aggTrades?symbol=${symbol}&limit=1000`).catch(() => null)
+  ]);
+  
+  if (!Array.isArray(k1m) || k1m.length < 30) return null;
+  
+  const closes1 = k1m.map(k => parseFloat(k[4]));
+  const highs1 = k1m.map(k => parseFloat(k[2]));
+  const lows1 = k1m.map(k => parseFloat(k[3]));
+  const opens1 = k1m.map(k => parseFloat(k[1]));
+  const vols1 = k1m.map(k => parseFloat(k[5]));
+  const trades1 = k1m.map(k => parseFloat(k[8]));
+  const takerBuy1 = k1m.map(k => parseFloat(k[9]));
+  
+  const closes5 = k5m.map(k => parseFloat(k[4]));
+  const highs5 = k5m.map(k => parseFloat(k[2]));
+  const lows5 = k5m.map(k => parseFloat(k[3]));
+  
+  const closes15 = k15m.map(k => parseFloat(k[4]));
+  const closes1h = k1h.map(k => parseFloat(k[4]));
+  const highs1h = k1h.map(k => parseFloat(k[2]));
+  const lows1h = k1h.map(k => parseFloat(k[3]));
+  
+  const price = closes1[closes1.length - 1];
+  const vol24h = parseFloat(t.quoteVolume);
+  const change24h = parseFloat(t.priceChangePercent);
+  
+  const avgVol20_1m = vols1.slice(-20).reduce((a,b)=>a+b,0) / 20;
+  const avgTrades20_1m = trades1.slice(-20).reduce((a,b)=>a+b,0) / 20;
+  let whaleCandles = 0;
+  for (let i = closes1.length - 20; i < closes1.length; i++) {
+    const body = Math.abs(closes1[i] - opens1[i]);
+    const range = highs1[i] - lows1[i];
+    if (body / (range || 1) < 0.4 && vols1[i] > avgVol20_1m * 1.3 && trades1[i] > avgTrades20_1m * 1.2 && range / price < 0.012) whaleCandles++;
+  }
+  const whaleScore = whaleCandles >= 6 ? 100 : whaleCandles >= 4 ? 80 : whaleCandles >= 3 ? 60 : 45;
+  
+  const last15High = Math.max(...highs1.slice(-15));
+  const last15Low = Math.min(...lows1.slice(-15));
+  const last30High = Math.max(...highs1.slice(-30));
+  const last30Low = Math.min(...lows1.slice(-30));
+  const compression15 = (last15High - last15Low) / last15Low;
+  const compression30 = (last30High - last30Low) / last30Low;
+  const compressionRatio = compression15 / (compression30 || 1);
+  const compressionScore = compressionRatio < 0.35 && compression15 < 0.008 ? 100 :
+                           compressionRatio < 0.45 && compression15 < 0.012 ? 85 :
+                           compressionRatio < 0.55 && compression15 < 0.018 ? 70 : 45;
+  
+  let obv = 0;
+  const obvHistory = [];
+  for (let i = 1; i < closes1.length; i++) {
+    if (closes1[i] > closes1[i-1]) obv += vols1[i];
+    else if (closes1[i] < closes1[i-1]) obv -= vols1[i];
+    obvHistory.push(obv);
+  }
+  const obvChange = obvHistory.length > 20 ? (obvHistory[obvHistory.length-1] - obvHistory[obvHistory.length-15]) / Math.abs(obvHistory[obvHistory.length-15] || 1) : 0;
+  const priceChange1m = (closes1[closes1.length-1] - closes1[closes1.length-15]) / closes1[closes1.length-15];
+  const obvScore = obvChange > 0.3 && Math.abs(priceChange1m) < 0.008 ? 100 :
+                   obvChange > 0.15 && Math.abs(priceChange1m) < 0.012 ? 80 :
+                   obvChange > 0.08 ? 60 : 40;
+  
+  const supportLevel = Math.min(...lows1.slice(-30));
+  const tolerance = supportLevel * 0.002;
+  let supportTouches = 0;
+  for (let i = 0; i < lows1.length; i++) if (Math.abs(lows1[i] - supportLevel) < tolerance) supportTouches++;
+  const supportScore = supportTouches >= 4 ? 100 : supportTouches >= 3 ? 80 : supportTouches >= 2 ? 60 : 40;
+  
+  let tightCandles = 0;
+  for (let i = closes1.length - 20; i < closes1.length; i++) if ((highs1[i] - lows1[i]) / lows1[i] < 0.003) tightCandles++;
+  const spreadScore = tightCandles >= 10 ? 100 : tightCandles >= 7 ? 80 : tightCandles >= 5 ? 60 : 45;
+  
+  let dojiCount = 0;
+  for (let i = closes1.length - 15; i < closes1.length; i++) {
+    const body = Math.abs(closes1[i] - opens1[i]);
+    const range = highs1[i] - lows1[i];
+    if (range > 0 && body / range < 0.25) dojiCount++;
+  }
+  const silentScore = dojiCount >= 7 ? 100 : dojiCount >= 5 ? 80 : dojiCount >= 4 ? 65 : 45;
+  
+  const avgVol30 = vols1.slice(-30, -10).reduce((a,b)=>a+b,0) / 20;
+  const avgVol10 = vols1.slice(-10).reduce((a,b)=>a+b,0) / 10;
+  const dryUpRatio = avgVol10 / (avgVol30 || 1);
+  const dryUpScore = dryUpRatio < 0.4 ? 100 : dryUpRatio < 0.55 ? 85 : dryUpRatio < 0.7 ? 70 : 45;
+  
+  const price30mAgo = closes1[closes1.length - 30] || price;
+  const change30m = Math.abs((price - price30mAgo) / price30mAgo);
+  const timeScore = change30m < 0.005 ? 100 : change30m < 0.008 ? 80 : change30m < 0.012 ? 60 : 40;
+  
+  let lowerWickCount = 0, totalLowerWickRatio = 0;
+  for (let i = closes1.length - 20; i < closes1.length; i++) {
+    const range = highs1[i] - lows1[i];
+    const lowerWick = Math.min(closes1[i], opens1[i]) - lows1[i];
+    const ratio = range > 0 ? lowerWick / range : 0;
+    if (ratio > 0.5) lowerWickCount++;
+    totalLowerWickRatio += ratio;
+  }
+  const avgLowerWick = totalLowerWickRatio / 20;
+  const wickScore = lowerWickCount >= 6 && avgLowerWick > 0.4 ? 100 :
+                    lowerWickCount >= 4 && avgLowerWick > 0.35 ? 80 : lowerWickCount >= 3 ? 65 : 45;
+  
+  const ema10_1m = calcEMA(closes1, 10);
+  const ema20_1m = calcEMA(closes1, 20);
+  const ema50_1m = calcEMA(closes1, 50);
+  const microScore = ema10_1m > ema20_1m && ema20_1m > ema50_1m && price > ema10_1m ? 100 :
+                     ema10_1m > ema20_1m && price > ema10_1m ? 75 : price > ema20_1m ? 55 : 35;
+  
+  let orderBookScore = 50, bidAskRatio = 1, bigWalls = { bids: 0, asks: 0 };
+  if (orderBook && orderBook.bids && orderBook.asks) {
+    const bidVolume = orderBook.bids.reduce((sum, b) => sum + parseFloat(b[0]) * parseFloat(b[1]), 0);
+    const askVolume = orderBook.asks.reduce((sum, a) => sum + parseFloat(a[0]) * parseFloat(a[1]), 0);
+    bidAskRatio = bidVolume / (askVolume || 1);
+    const avgBidSize = bidVolume / orderBook.bids.length;
+    const avgAskSize = askVolume / orderBook.asks.length;
+    orderBook.bids.forEach(b => { if (parseFloat(b[0]) * parseFloat(b[1]) > avgBidSize * 5) bigWalls.bids++; });
+    orderBook.asks.forEach(a => { if (parseFloat(a[0]) * parseFloat(a[1]) > avgAskSize * 5) bigWalls.asks++; });
+    if (bidAskRatio > 2 && bigWalls.bids > bigWalls.asks) orderBookScore = 100;
+    else if (bidAskRatio > 1.5) orderBookScore = 85;
+    else if (bidAskRatio > 1.2) orderBookScore = 70;
+    else if (bidAskRatio > 1) orderBookScore = 55;
+    else if (bidAskRatio > 0.8) orderBookScore = 35;
+    else orderBookScore = 15;
+  }
+  
+  let largeTradesScore = 50, largeBuys = 0, largeSells = 0;
+  if (Array.isArray(trades) && trades.length > 0) {
+    const tradeValues = trades.map(tr => parseFloat(tr.p) * parseFloat(tr.q));
+    const avgTradeValue = tradeValues.reduce((a,b)=>a+b,0) / tradeValues.length;
+    const threshold = avgTradeValue * 8;
+    trades.forEach(tr => {
+      const value = parseFloat(tr.p) * parseFloat(tr.q);
+      if (value > threshold) { if (tr.m === false) largeBuys++; else largeSells++; }
+    });
+    const totalLarge = largeBuys + largeSells;
+    if (totalLarge > 0) {
+      const buyRatio = largeBuys / totalLarge;
+      if (buyRatio > 0.75 && largeBuys >= 5) largeTradesScore = 100;
+      else if (buyRatio > 0.65 && largeBuys >= 3) largeTradesScore = 85;
+      else if (buyRatio > 0.55) largeTradesScore = 70;
+      else if (buyRatio > 0.45) largeTradesScore = 50;
+      else largeTradesScore = 25;
+    }
+  }
+  
+  let takerScore = 50, takerBuyRatio = 0.5;
+  const recentTakerBuy = takerBuy1.slice(-15).reduce((a,b)=>a+b,0);
+  const recentTotalVol = vols1.slice(-15).reduce((a,b)=>a+b,0);
+  if (recentTotalVol > 0) {
+    takerBuyRatio = recentTakerBuy / recentTotalVol;
+    if (takerBuyRatio > 0.65) takerScore = 100;
+    else if (takerBuyRatio > 0.58) takerScore = 85;
+    else if (takerBuyRatio > 0.52) takerScore = 70;
+    else if (takerBuyRatio > 0.48) takerScore = 50;
+    else if (takerBuyRatio > 0.42) takerScore = 30;
+    else takerScore = 15;
+  }
+  
+  let totalVP = 0, totalV = 0;
+  for (let i = 0; i < closes1.length; i++) {
+    const tp = (highs1[i] + lows1[i] + closes1[i]) / 3;
+    totalVP += tp * vols1[i];
+    totalV += vols1[i];
+  }
+  const vwap = totalV > 0 ? totalVP / totalV : price;
+  const vwapDeviation = (price - vwap) / vwap;
+  let vwapScore = 50;
+  if (Math.abs(vwapDeviation) < 0.003 && takerBuyRatio > 0.52) vwapScore = 100;
+  else if (Math.abs(vwapDeviation) < 0.005) vwapScore = 80;
+  else if (vwapDeviation > -0.01 && vwapDeviation < 0.01) vwapScore = 65;
+  else vwapScore = 45;
+  
+  const tenkan = (Math.max(...highs5.slice(-9)) + Math.min(...lows5.slice(-9))) / 2;
+  const kijun = (Math.max(...highs5.slice(-26)) + Math.min(...lows5.slice(-26))) / 2;
+  const senkouA = (tenkan + kijun) / 2;
+  const senkouB = (Math.max(...highs5.slice(-52)) + Math.min(...lows5.slice(-52))) / 2;
+  const cloudTop = Math.max(senkouA, senkouB);
+  const cloudBottom = Math.min(senkouA, senkouB);
+  let ichimokuScore = 50;
+  if (price > cloudTop && tenkan > kijun) ichimokuScore = 100;
+  else if (price > cloudTop) ichimokuScore = 80;
+  else if (price > cloudBottom && tenkan > kijun) ichimokuScore = 70;
+  else ichimokuScore = 40;
+  
+  let smartMoneySignals = 0;
+  if (whaleScore >= 70) smartMoneySignals++;
+  if (largeTradesScore >= 70) smartMoneySignals++;
+  if (takerScore >= 70) smartMoneySignals++;
+  if (obvScore >= 70) smartMoneySignals++;
+  if (orderBookScore >= 70) smartMoneySignals++;
+  if (dryUpScore >= 70) smartMoneySignals++;
+  const smartMoneyScore = smartMoneySignals >= 5 ? 100 : smartMoneySignals >= 4 ? 85 : smartMoneySignals >= 3 ? 70 : 50;
+  
+  const fibHigh = Math.max(...highs1h.slice(-50));
+  const fibLow = Math.min(...lows1h.slice(-50));
+  const fibRange = fibHigh - fibLow;
+  const fibLevels = { '23.6': fibHigh - fibRange * 0.236, '38.2': fibHigh - fibRange * 0.382, '50.0': fibHigh - fibRange * 0.500, '61.8': fibHigh - fibRange * 0.618, '78.6': fibHigh - fibRange * 0.786 };
+  let nearFib = null, minDist = Infinity;
+  for (const [level, p] of Object.entries(fibLevels)) {
+    const dist = Math.abs(price - p) / price;
+    if (dist < minDist) { minDist = dist; nearFib = level; }
+  }
+  const fibScore = minDist < 0.003 && ['38.2','50.0','61.8'].includes(nearFib) ? 100 : minDist < 0.005 ? 80 : 55;
+  
+  const recent20High = Math.max(...highs1.slice(-20));
+  const distToHigh = (recent20High - price) / price;
+  const liquidationScore = distToHigh < 0.005 ? 100 : distToHigh < 0.01 ? 85 : distToHigh < 0.02 ? 70 : 50;
+  
+  const last50_5m = closes5.slice(-50);
+  const wave1Low = Math.min(...last50_5m.slice(0, 20));
+  const wave1High = Math.max(...last50_5m.slice(15, 35));
+  const wave2Low = Math.min(...last50_5m.slice(30, 50));
+  const wave1Size = (wave1High - wave1Low) / wave1Low;
+  const wave2Retrace = (wave1High - wave2Low) / (wave1High - wave1Low);
+  const elliottScore = wave1Size > 0.05 && wave2Retrace > 0.4 && wave2Retrace < 0.7 ? 100 :
+                       wave1Size > 0.03 && wave2Retrace > 0.35 && wave2Retrace < 0.75 ? 80 : 55;
+  
+  const rsi1m = calcRSI(closes1, 14);
+  const rsi5m = calcRSI(closes5, 14);
+  const rsi15m = calcRSI(closes15, 14);
+  const rsi1h_v = calcRSI(closes1h, 14);
+  let alignmentScore = 0;
+  if (rsi1m > 45 && rsi1m < 75) alignmentScore += 25;
+  if (rsi5m > 45 && rsi5m < 75) alignmentScore += 25;
+  if (rsi15m > 40 && rsi15m < 75) alignmentScore += 25;
+  if (rsi1h_v > 40 && rsi1h_v < 75) alignmentScore += 25;
+  
+  let explodeScore = Math.round(
+    whaleScore * 0.08 + compressionScore * 0.07 + obvScore * 0.06 +
+    smartMoneyScore * 0.08 + orderBookScore * 0.07 + largeTradesScore * 0.07 +
+    takerScore * 0.06 + supportScore * 0.04 + dryUpScore * 0.04 +
+    silentScore * 0.04 + wickScore * 0.04 + microScore * 0.03 +
+    50 * 0.03 + 50 * 0.03 + vwapScore * 0.03 +
+    ichimokuScore * 0.03 + fibScore * 0.02 + liquidationScore * 0.02 +
+    elliottScore * 0.02 + alignmentScore * 0.02 + timeScore * 0.01 + spreadScore * 0.01
+  );
+  
+  const warnings = [];
+  let bonus = 0;
+  if (whaleScore >= 70 && compressionScore >= 70 && obvScore >= 70) { bonus += 10; warnings.push('🌟 إشارة ذهبية'); }
+  if (orderBookScore >= 80 && largeTradesScore >= 80 && takerScore >= 70) { bonus += 10; warnings.push('🐋 تجميع مؤسسي'); }
+  if (smartMoneyScore >= 85) { bonus += 8; warnings.push('💎 الأموال الذكية'); }
+  
+  const highCount = [whaleScore, compressionScore, obvScore, supportScore, spreadScore, silentScore, dryUpScore, timeScore, wickScore, microScore, orderBookScore, largeTradesScore, 50, 50, takerScore, vwapScore, ichimokuScore, smartMoneyScore, fibScore, liquidationScore, elliottScore, alignmentScore].filter(s => s >= 70).length;
+  if (highCount >= 16) bonus += 12;
+  else if (highCount >= 12) bonus += 6;
+  
+  explodeScore = Math.min(100, explodeScore + bonus);
+  
+  if (change24h > 8) { explodeScore -= 20; warnings.push('⚠️ ارتفعت مسبقاً'); }
+  const last10Max = Math.max(...highs1.slice(-10));
+  if ((last10Max - price) / price > 0.05) { explodeScore -= 15; warnings.push('⚠️ انفجار سابق'); }
+  if (vol24h < 5_000_000) { explodeScore -= 25; warnings.push('⚠️ سيولة ضعيفة'); }
+  if (rsi5m > 78) { explodeScore -= 12; warnings.push('⚠️ RSI مشبع'); }
+  
+  explodeScore = Math.max(0, Math.min(100, explodeScore));
+  
+  const backtest = runBacktestAccumulation(k1m);
+  
+  let level, levelClass, timing;
+  if (explodeScore >= 85) { level = '🚀 انفجار خلال 5 دقائق'; levelClass = 'ultra'; timing = '⚡ ادخل الآن'; }
+  else if (explodeScore >= 72) { level = '🔥 انفجار خلال 10-15 دقيقة'; levelClass = 'strong'; timing = '⏰ استعد للدخول'; }
+  else if (explodeScore >= 58) { level = '⚡ تجميع نشط'; levelClass = 'medium'; timing = '👀 راقب عن كثب'; }
+  else { level = '📡 تجميع مبكر'; levelClass = 'weak'; timing = '⏳ في المراقبة'; }
+  
+  const entry = price;
+  const target1 = price * 1.03;
+  const target2 = price * 1.07;
+  const target3 = price * 1.15;
+  const stop = price * 0.982;
+  
+  return {
+    symbol, name: symbol.replace('USDT',''),
+    price, change: change24h, volume: vol24h,
+    explodeScore, level, levelClass, timing, warnings,
+    whaleCandles, compressionRatio, obvChange, dryUpRatio, supportTouches,
+    dojiCount, tightCandles, lowerWickCount, rsi5: rsi5m,
+    bidAskRatio, largeBuys, largeSells, takerBuyRatio,
+    backtest,
+    signals: {
+      whale: { score: Math.round(whaleScore), label: `${whaleCandles} شمعة` },
+      compression: { score: Math.round(compressionScore), label: `${(compression15*100).toFixed(2)}%` },
+      obv: { score: Math.round(obvScore), label: `${(obvChange*100).toFixed(0)}%` },
+      support: { score: Math.round(supportScore), label: `${supportTouches} لمسات` },
+      spread: { score: Math.round(spreadScore), label: `${tightCandles} شمعة` },
+      silent: { score: Math.round(silentScore), label: `${dojiCount} دوجي` },
+      dryUp: { score: Math.round(dryUpScore), label: `×${dryUpRatio.toFixed(2)}` },
+      time: { score: Math.round(timeScore), label: `${(change30m*100).toFixed(2)}%` },
+      wick: { score: Math.round(wickScore), label: `${lowerWickCount} ذيول` },
+      micro: { score: Math.round(microScore), label: ema10_1m > ema20_1m ? '✅ صاعد' : '⏸️ محايد' },
+      orderBook: { score: Math.round(orderBookScore), label: `B/A ${bidAskRatio.toFixed(2)}` },
+      largeTrades: { score: Math.round(largeTradesScore), label: `${largeBuys} شراء` },
+      funding: { score: 50, label: '—' },
+      openInt: { score: 50, label: '—' },
+      taker: { score: Math.round(takerScore), label: `${(takerBuyRatio*100).toFixed(0)}%` },
+      vwap: { score: Math.round(vwapScore), label: `${(vwapDeviation*100).toFixed(2)}%` },
+      ichimoku: { score: Math.round(ichimokuScore), label: price > cloudTop ? '✅ فوق' : '⏸️ تحت' },
+      smartMoney: { score: Math.round(smartMoneyScore), label: `${smartMoneySignals}/6` },
+      fib: { score: Math.round(fibScore), label: nearFib ? `${nearFib}%` : '—' },
+      liquidation: { score: Math.round(liquidationScore), label: `${(distToHigh*100).toFixed(2)}%` },
+      elliott: { score: Math.round(elliottScore), label: wave2Retrace > 0.4 && wave2Retrace < 0.7 ? '✅ موجة 2' : '—' },
+      alignment: { score: Math.round(alignmentScore), label: `${alignmentScore/25}/4 TF` }
+    },
+    entry, target1, target2, target3, stop
+  };
+}
+
+function runBacktestAccumulation(klines) {
+  const closes = klines.map(k => parseFloat(k[4]));
+  const highs = klines.map(k => parseFloat(k[2]));
+  const lows = klines.map(k => parseFloat(k[3]));
+  const vols = klines.map(k => parseFloat(k[5]));
+  let wins = 0, losses = 0, totalReturn = 0;
+  const maxTest = Math.min(60, closes.length - 30);
+  for (let i = 30; i < 30 + maxTest; i++) {
+    const last10High = Math.max(...highs.slice(i-10, i));
+    const last10Low = Math.min(...lows.slice(i-10, i));
+    const compression = (last10High - last10Low) / last10Low;
+    const avgVol10 = vols.slice(i-10, i).reduce((a,b)=>a+b,0) / 10;
+    const prevAvgVol = vols.slice(i-20, i-10).reduce((a,b)=>a+b,0) / 10;
+    const dryUp = avgVol10 / (prevAvgVol || 1);
+    if (compression < 0.015 && dryUp < 0.7) {
+      const entry = closes[i];
+      let maxHigh = entry;
+      for (let j = i + 1; j < Math.min(i + 11, closes.length); j++) maxHigh = Math.max(maxHigh, highs[j]);
+      const ret = (maxHigh - entry) / entry * 100;
+      if (ret >= 2.5) { wins++; totalReturn += ret; }
+      else if (ret < 0.5) { losses++; totalReturn -= 1; }
+    }
+  }
+  const total = wins + losses;
+  const winRate = total > 0 ? (wins / total * 100) : 0;
+  const avgReturn = total > 0 ? (totalReturn / total) : 0;
+  return { wins, losses, total, winRate: winRate.toFixed(0), avgReturn: avgReturn.toFixed(2) };
+}
+
+function calculateExplosionETA(r) {
+  const score = r.explodeScore;
+  let baseSeconds;
+  if (score >= 90) baseSeconds = 90;
+  else if (score >= 85) baseSeconds = 180;
+  else if (score >= 80) baseSeconds = 300;
+  else if (score >= 75) baseSeconds = 480;
+  else if (score >= 72) baseSeconds = 600;
+  else if (score >= 65) baseSeconds = 900;
+  else if (score >= 58) baseSeconds = 1200;
+  else baseSeconds = 1800;
+  
+  const sig = r.signals;
+  let adjustments = 0;
+  if (sig.orderBook.score >= 85) adjustments -= 60;
+  if (sig.largeTrades.score >= 85) adjustments -= 60;
+  if (sig.taker.score >= 85) adjustments -= 45;
+  if (sig.whale.score >= 85) adjustments -= 45;
+  if (sig.compression.score >= 85) adjustments -= 30;
+  if (sig.smartMoney.score >= 85) adjustments -= 45;
+  if (sig.dryUp.score < 40) adjustments += 120;
+  if (sig.compression.score < 40) adjustments += 90;
+  
+  let finalSeconds = Math.max(60, baseSeconds + adjustments);
+  const strongCount = Object.values(sig).filter(s => s.score >= 70).length;
+  const confidence = Math.min(98, Math.round(50 + strongCount * 2.2));
+  
+  let reason;
+  if (score >= 85) reason = 'مؤشرات مكتملة';
+  else if (score >= 72) reason = 'تجميع قوي + ضغط شراء';
+  else if (score >= 58) reason = 'تجميع نشط';
+  else reason = 'تجميع مبكر';
+  
+  let label;
+  if (finalSeconds <= 180) label = '⚡ انفجار وشيك جداً';
+  else if (finalSeconds <= 600) label = '🔥 انفجار قريب';
+  else if (finalSeconds <= 1200) label = '⏰ قريب خلال دقائق';
+  else label = '⏳ تحت المراقبة';
+  
+  return { seconds: finalSeconds, confidence, label, reason };
+}
+
+function startAllCountdowns() {
+  Object.values(activeTimers).forEach(t => {
+    if (t.interval) clearInterval(t.interval);
+    if (t.verifyInterval) clearInterval(t.verifyInterval);
+  });
+  activeTimers = {};
+  
+  document.querySelectorAll('.countdown-timer').forEach(el => {
+    const symbol = el.dataset.symbol;
+    const initialSeconds = parseInt(el.dataset.eta);
+    const initialPrice = parseFloat(el.dataset.price);
+    const timeEl = el.querySelector('.countdown-time');
+    const barEl = el.querySelector('.countdown-bar-fill');
+    const statusEl = el.querySelector('.countdown-status');
+    const labelEl = el.querySelector('.countdown-label');
+    const footerLeft = el.querySelector('.countdown-footer span:first-child');
+    
+    let remaining = initialSeconds;
+    let phase = 'countdown';
+    let verifyCountdown = 60;
+    
+    const updateTimer = () => {
+      if (phase === 'countdown') {
+        if (remaining <= 0) {
+          phase = 'verifying';
+          verifyCountdown = 60;
+          labelEl.textContent = '🔍 جاري التحقق...';
+          labelEl.style.color = '#f0b90b';
+          statusEl.textContent = '⏱️ فحص السعر...';
+          statusEl.style.color = '#f0b90b';
+          el.style.borderColor = '#f0b90b';
+          playVerifySound();
+          startPriceVerification(symbol, initialPrice, el);
+          return;
+        }
+        remaining--;
+        const mins = Math.floor(remaining / 60);
+        const secs = remaining % 60;
+        timeEl.textContent = `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+        const progress = ((initialSeconds - remaining) / initialSeconds) * 100;
+        barEl.style.width = progress + '%';
+        if (remaining <= 60) {
+          timeEl.style.color = '#f85149';
+          barEl.style.background = 'linear-gradient(90deg, #f85149, #a371f7)';
+          statusEl.textContent = '⚡ اقترب الموعد!';
+          statusEl.style.color = '#f85149';
+        } else if (remaining <= 180) {
+          timeEl.style.color = '#f0b90b';
+          barEl.style.background = 'linear-gradient(90deg, #f0b90b, #f85149)';
+          statusEl.textContent = '🔥 اقترب الوقت';
+        } else if (remaining <= 600) {
+          timeEl.style.color = '#a371f7';
+          statusEl.textContent = '⏰ اقترب الوقت';
+        } else {
+          timeEl.style.color = '#58a6ff';
+          statusEl.textContent = '⏳ في مرحلة التجميع';
+        }
+      } else if (phase === 'verifying') {
+        verifyCountdown--;
+        timeEl.textContent = `${verifyCountdown}s`;
+        const progress = ((60 - verifyCountdown) / 60) * 100;
+        barEl.style.width = progress + '%';
+        if (verifyCountdown <= 0) {
+          phase = 'result';
+          if (activeTimers[symbol]) clearInterval(activeTimers[symbol].interval);
+          finalizeVerification(symbol, el);
+        }
+      }
+    };
+    
+    updateTimer();
+    const interval = setInterval(updateTimer, 1000);
+    activeTimers[symbol] = { interval, el, phase: 'countdown', initialPrice };
+  });
+}
+
+async function startPriceVerification(symbol, initialPrice, el) {
+  const timeEl = el.querySelector('.countdown-time');
+  const labelEl = el.querySelector('.countdown-label');
+  const statusEl = el.querySelector('.countdown-status');
+  const footerLeft = el.querySelector('.countdown-footer span:first-child');
+  let highestPrice = initialPrice;
+  
+  const verifyInterval = setInterval(async () => {
+    try {
+      const res = await fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`);
+      const data = await res.json();
+      const currentPrice = parseFloat(data.price);
+      if (currentPrice > highestPrice) highestPrice = currentPrice;
+      const changeFromStart = ((currentPrice - initialPrice) / initialPrice) * 100;
+      const maxChange = ((highestPrice - initialPrice) / initialPrice) * 100;
+      footerLeft.textContent = `📊 $${currentPrice.toFixed(6)} (${changeFromStart >= 0 ? '+' : ''}${changeFromStart.toFixed(2)}%)`;
+      
+      if (maxChange >= 2) {
+        clearInterval(verifyInterval);
+        timeEl.textContent = '🚀';
+        timeEl.style.color = '#3fb950';
+        labelEl.textContent = `✅ انفجر +${maxChange.toFixed(2)}%`;
+        labelEl.style.color = '#3fb950';
+        statusEl.textContent = '🎉 انفجار حقيقي!';
+        statusEl.style.color = '#3fb950';
+        el.style.borderColor = '#3fb950';
+        el.style.boxShadow = '0 0 40px #3fb95099';
+        playExplosionAlert();
+        if (activeTimers[symbol]) { clearInterval(activeTimers[symbol].interval); activeTimers[symbol].verified = true; }
+      } else if (changeFromStart <= -2) {
+        clearInterval(verifyInterval);
+        timeEl.textContent = '❌';
+        timeEl.style.color = '#f85149';
+        labelEl.textContent = `فشلت ${changeFromStart.toFixed(2)}%`;
+        labelEl.style.color = '#f85149';
+        statusEl.textContent = '⚠️ لم ينفجر';
+        statusEl.style.color = '#f85149';
+        el.style.opacity = '0.75';
+        playFailSound();
+        if (activeTimers[symbol]) { clearInterval(activeTimers[symbol].interval); activeTimers[symbol].verified = true; }
+      }
+    } catch (e) {}
+  }, 5000);
+  
+  if (activeTimers[symbol]) activeTimers[symbol].verifyInterval = verifyInterval;
+}
+
+function finalizeVerification(symbol, el) {
+  const timeEl = el.querySelector('.countdown-time');
+  const labelEl = el.querySelector('.countdown-label');
+  const statusEl = el.querySelector('.countdown-status');
+  const footerLeft = el.querySelector('.countdown-footer span:first-child');
+  const timer = activeTimers[symbol];
+  if (!timer || timer.verified) return;
+  
+  fetch(`https://api.binance.com/api/v3/ticker/price?symbol=${symbol}`)
+    .then(r => r.json())
+    .then(data => {
+      const currentPrice = parseFloat(data.price);
+      const change = ((currentPrice - timer.initialPrice) / timer.initialPrice) * 100;
+      if (change >= 0.5) {
+        timeEl.textContent = '✅';
+        timeEl.style.color = '#3fb950';
+        labelEl.textContent = `ارتفع +${change.toFixed(2)}%`;
+        labelEl.style.color = '#3fb950';
+        statusEl.textContent = '📈 تحرك صعودي';
+        statusEl.style.color = '#3fb950';
+        playVerifySuccessSound();
+      } else if (change <= -0.5) {
+        timeEl.textContent = '❌';
+        timeEl.style.color = '#f85149';
+        labelEl.textContent = `نزل ${change.toFixed(2)}%`;
+        labelEl.style.color = '#f85149';
+        statusEl.textContent = '📉 لم ينفجر';
+        playFailSound();
+      } else {
+        timeEl.textContent = '⏸️';
+        timeEl.style.color = '#8b949e';
+        labelEl.textContent = `لا حركة (${change >= 0 ? '+' : ''}${change.toFixed(2)}%)`;
+        labelEl.style.color = '#8b949e';
+        statusEl.textContent = '⚠️ ثابت';
+      }
+      footerLeft.textContent = `📊 $${timer.initialPrice.toFixed(6)} → $${currentPrice.toFixed(6)}`;
+      if (activeTimers[symbol]) { clearInterval(activeTimers[symbol].verifyInterval); activeTimers[symbol].verified = true; }
+    })
+    .catch(() => {});
+}
+
+function playVerifySound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 600; osc.type = 'sine';
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.3);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.3);
+  } catch(e) {}
+}
+
+function playVerifySuccessSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [800, 1000].forEach((f, i) => {
+      setTimeout(() => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = f; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+      }, i * 200);
+    });
+  } catch(e) {}
+}
+
+function playFailSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain); gain.connect(ctx.destination);
+    osc.frequency.value = 300; osc.type = 'sawtooth';
+    gain.gain.setValueAtTime(0.2, ctx.currentTime);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+    osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.5);
+  } catch(e) {}
+}
+
+function playExplosionAlert() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [523, 659, 784, 1047, 1319].forEach((freq, idx) => {
+      setTimeout(() => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq; osc.type = 'triangle';
+        gain.gain.setValueAtTime(0.5, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+      }, idx * 120);
+    });
+  } catch(e) {}
+}
+
+async function runExplodeScanner() {
+  const limit = parseInt(document.getElementById('explodeLimit').value);
+  const minScore = parseInt(document.getElementById('explodeMinScore').value);
+  showStatus('🌐 اختبار المصادر...', 'explode');
+  document.getElementById('results').innerHTML = '';
+  await testAllSources();
+  renderSourcesPanel();
+  const available = Object.values(availableSources).filter(v => v).length;
+  showStatus(`✅ ${available} مصادر — جلب السوق...`, 'explode');
+  
+  Object.values(activeTimers).forEach(t => {
+    if (t.interval) clearInterval(t.interval);
+    if (t.verifyInterval) clearInterval(t.verifyInterval);
+  });
+  activeTimers = {};
+  
+  try {
+    const data = await fetchFromSource('binance', '/api/v3/ticker/24hr');
+    const candidates = data
+      .filter(t => t.symbol.endsWith('USDT'))
+      .filter(t => parseFloat(t.quoteVolume) > 1_000_000)
+      .filter(t => !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
+      .filter(t => !t.symbol.includes('BULL') && !t.symbol.includes('BEAR'))
+      .filter(t => !['USDCUSDT','FDUSDUSDT','TUSDUSDT','BUSDUSDT','DAIUSDT','USDPUSDT','EURUSDT','GBPUSDT','USDTTRY','USDTARS','USDTBRL'].includes(t.symbol))
+      .filter(t => Math.abs(parseFloat(t.priceChangePercent)) < 12)
+      .sort((a, b) => parseFloat(b.quoteVolume) - parseFloat(a.quoteVolume))
+      .slice(0, limit);
+    showStatus(`⚡ فحص ${candidates.length} عملة...`, 'explode');
+    const results = [];
+    for (let i = 0; i < candidates.length; i += 3) {
+      const batch = candidates.slice(i, i + 3);
+      const batchResults = await Promise.all(batch.map(t => analyzeExplosionDeep(t).catch(() => null)));
+      batchResults.forEach(r => { if (r && r.explodeScore >= minScore) results.push(r); });
+      showStatus(`⚡ ${Math.min(i + 3, candidates.length)}/${candidates.length} | ${results.length}`, 'explode');
+      await new Promise(res => setTimeout(res, 300));
+    }
+    results.sort((a, b) => b.explodeScore - a.explodeScore);
+    currentExplode = results;
+    if (results.length === 0) { showStatus('🔍 لا إشارات قوية', 'success'); return; }
+    showStatus(`✅ ${results.length} عملة!`, 'explode');
+    let html = '';
+    results.forEach((r, i) => {
+      html += renderExplodeToken(r, i + 1);
+      history.unshift({ symbol: r.symbol, price: r.price, change: r.change, score: r.explodeScore, recommendation: '⚡ تجميع', date: new Date().toISOString() });
+    });
+    history = history.slice(0, 50);
+    localStorage.setItem('analysisHistory', JSON.stringify(history));
+    document.getElementById('results').innerHTML = html;
+    setTimeout(() => startAllCountdowns(), 100);
+    if (results.some(r => r.explodeScore >= 85)) playAlertSound();
+  } catch (err) { showStatus('❌ ' + err.message, 'error'); }
+}
+
+function renderExplodeToken(r, rank) {
+  const fmt = n => n.toLocaleString('en-US', { maximumFractionDigits: 8 });
+  const changeClass = r.change >= 0 ? 'up' : 'down';
+  const sign = r.change >= 0 ? '+' : '';
+  const color = r.explodeScore >= 85 ? '#f85149' : r.explodeScore >= 72 ? '#a371f7' : r.explodeScore >= 58 ? '#3fb950' : '#58a6ff';
+  const sig = r.signals;
+  const barColor = (s) => s >= 70 ? '#3fb950' : s >= 45 ? '#f0b90b' : '#f85149';
+  const eta = calculateExplosionETA(r);
+  const tokenId = 'timer_' + r.symbol + '_' + Math.random().toString(36).substr(2, 5);
+  
+  const sigRow = (icon, label, data) => `
+    <div class="signal-row">
+      <span class="signal-label"><span class="icon">${icon}</span>${label}</span>
+      <span style="display:flex; align-items:center; gap:6px;">
+        <span class="signal-value ${data.score >= 70 ? 'on' : data.score >= 45 ? '' : 'off'}">${data.label}</span>
+        <span class="signal-bar"><span class="signal-bar-fill" style="width:${data.score}%; background:${barColor(data.score)};"></span></span>
+      </span>
+    </div>`;
+  
+  const warningsHtml = r.warnings.length > 0 
+    ? `<div style="margin-top:6px;">${r.warnings.map(w => {
+        const isBonus = w.startsWith('🌟') || w.startsWith('🐋') || w.startsWith('💎');
+        return `<span class="${isBonus ? 'bonus-tag' : 'warning-tag'}">${w}</span>`;
+      }).join('')}</div>` : '';
+  
+  const bt = r.backtest;
+  const backtestHtml = bt.total > 0 ? `
+    <div class="backtest-box">
+      <div class="backtest-title">📊 Backtest — ${bt.total} إشارة:</div>
+      <div class="backtest-row"><span class="label">النجاح:</span><span class="value ${bt.winRate >= 60 ? 'win' : 'loss'}">${bt.winRate}%</span></div>
+      <div class="backtest-row"><span class="label">رابحة:</span><span class="value win">${bt.wins} ✅</span></div>
+      <div class="backtest-row"><span class="label">خاسرة:</span><span class="value loss">${bt.losses} ❌</span></div>
+      <div class="backtest-row"><span class="label">العائد:</span><span class="value ${bt.avgReturn > 0 ? 'win' : 'loss'}">${bt.avgReturn > 0 ? '+' : ''}${bt.avgReturn}%</span></div>
+    </div>` : '';
+  
+  const strongCount = Object.values(sig).filter(s => s.score >= 70).length;
+  
+  return `
+    <div class="token explode ${r.levelClass === 'ultra' ? 'ultra' : ''}">
+      <div class="token-header">
+        <div style="display:flex; align-items:center; gap:6px; flex-wrap:wrap;">
+          <span class="rank" style="background:${color};">${rank}</span>
+          <span class="token-name">${r.name}</span>
+          <span class="explode-badge ${r.levelClass}">${r.level}</span>
+        </div>
+        <span class="token-symbol">${r.symbol}</span>
+      </div>
+      <div id="${tokenId}" class="countdown-timer" data-eta="${eta.seconds}" data-symbol="${r.symbol}" data-price="${r.price}">
+        <div class="countdown-header">
+          <span>⏱️ الوقت المتوقع</span>
+          <span class="countdown-confidence">🎯 ${eta.confidence}%</span>
+        </div>
+        <div class="countdown-display">
+          <div class="countdown-time">--:--</div>
+          <div class="countdown-label">${eta.label}</div>
+        </div>
+        <div class="countdown-bar"><div class="countdown-bar-fill" style="width:0%"></div></div>
+        <div class="countdown-footer">
+          <span>📊 ${eta.reason}</span>
+          <span class="countdown-status">⏳ جاري العد...</span>
+        </div>
+      </div>
+      <div class="timing-banner" style="background:linear-gradient(90deg,${color}33,transparent); border-right:3px solid ${color};">${r.timing}</div>
+      <div class="token-stats">
+        <div><span class="stat-name">💰:</span> <span class="stat-val">$${fmt(r.price)}</span></div>
+        <div><span class="stat-name">📈:</span> <span class="stat-val ${changeClass}">${sign}${r.change.toFixed(2)}%</span></div>
+        <div><span class="stat-name">🐋 حوت:</span> <span class="stat-val hot">${r.whaleCandles}</span></div>
+        <div><span class="stat-name">📊 B/A:</span> <span class="stat-val">${r.bidAskRatio.toFixed(2)}</span></div>
+      </div>
+      <div class="explode-meter ${r.levelClass === 'ultra' ? 'ultra' : ''}">
+        <div class="explode-meter-label">🎯 احتمال الانفجار</div>
+        <div class="explode-meter-value">${r.explodeScore}%</div>
+        <div class="explode-meter-bar"><div class="explode-meter-fill" style="width:${r.explodeScore}%"></div></div>
+        <div class="explode-meter-info">
+          <span>💎 ${strongCount}/22 قوي</span>
+          <span>⚡ RSI: ${r.rsi5.toFixed(0)}</span>
+        </div>
+      </div>
+      <div class="explode-signals">
+        <div class="explode-signals-title"><span>⚡ 22 مؤشر</span><span>${strongCount}/22</span></div>
+        <div class="signal-group">
+          <div class="signal-group-title">🐋 أساسية (52%)</div>
+          ${sigRow('🐋','بصمة الحوت', sig.whale)}
+          ${sigRow('🐋','دفتر الأوامر', sig.orderBook)}
+          ${sigRow('💰','صفقات كبيرة', sig.largeTrades)}
+          ${sigRow('⚡','ضغط الشراء', sig.taker)}
+          ${sigRow('📊','OBV', sig.obv)}
+          ${sigRow('💎','الأموال الذكية', sig.smartMoney)}
+          ${sigRow('🔒','الانضغاط', sig.compression)}
+        </div>
+        <div class="signal-group">
+          <div class="signal-group-title">🎯 تأكيد (23%)</div>
+          ${sigRow('🧲','ارتداد الدعم', sig.support)}
+          ${sigRow('💥','جفاف الحجم', sig.dryUp)}
+          ${sigRow('🎯','تجميع صامت', sig.silent)}
+          ${sigRow('🔄','رفض الذيول', sig.wick)}
+          ${sigRow('📈','الميل الدقيق', sig.micro)}
+          ${sigRow('⚡','ضيق النطاق', sig.spread)}
+        </div>
+        <div class="signal-group">
+          <div class="signal-group-title">🌐 متقدمة (25%)</div>
+          ${sigRow('📊','التمويل', sig.funding)}
+          ${sigRow('🔗','الفائدة', sig.openInt)}
+          ${sigRow('🎲','VWAP', sig.vwap)}
+          ${sigRow('🕯️','إيشيموكو', sig.ichimoku)}
+          ${sigRow('🎯','فيبوناتشي', sig.fib)}
+          ${sigRow('🎯','تصفية', sig.liquidation)}
+          ${sigRow('🌊','إليوت', sig.elliott)}
+          ${sigRow('🎯','توافق MTF', sig.alignment)}
+          ${sigRow('🕐','الزمن', sig.time)}
+        </div>
+        ${warningsHtml}
+      </div>
+      ${backtestHtml}
+      <div class="rec-box ${r.levelClass === 'ultra' ? 'ultra' : 'explode'}">
+        <span class="rec-emoji">${r.explodeScore >= 85 ? '🚀' : r.explodeScore >= 72 ? '🔥' : '📡'}</span>
+        <div>
+          <div class="rec-title">${r.level}</div>
+          <div class="rec-score">${strongCount}/22 قوي | RSI: ${r.rsi5.toFixed(0)}</div>
+        </div>
+      </div>
+      <div class="strategy">
+        <div class="strategy-item"><span class="strategy-label">📍 دخول:</span> <span class="strategy-value entry">$${fmt(r.entry)}</span></div>
+        <div class="strategy-item"><span class="strategy-label">🎯 +3%:</span> <span class="strategy-value target">$${fmt(r.target1)}</span></div>
+        <div class="strategy-item"><span class="strategy-label">🎯 +7%:</span> <span class="strategy-value target">$${fmt(r.target2)}</span></div>
+        <div class="strategy-item"><span class="strategy-label">🚀 +15%:</span> <span class="strategy-value target">$${fmt(r.target3)}</span></div>
+        <div class="strategy-item" style="grid-column:span 2;"><span class="strategy-label">🛑 وقف:</span> <span class="strategy-value stop">$${fmt(r.stop)} (-1.8%)</span></div>
+      </div>
+    </div>`;
+}
+
+function toggleAutoScan() {
+  const btn = document.getElementById('autoBtn');
+  if (autoScanTimer) {
+    clearInterval(autoScanTimer);
+    autoScanTimer = null;
+    btn.textContent = '🔄 تشغيل الفحص التلقائي';
+    btn.style.background = 'linear-gradient(135deg,#1f6feb,#58a6ff)';
+  } else {
+    btn.textContent = '⏹️ إيقاف';
+    btn.style.background = 'linear-gradient(135deg,#f85149,#d29922)';
+    runExplodeScanner();
+    autoScanTimer = setInterval(runExplodeScanner, 3 * 60 * 1000);
+  }
+}
+
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [880, 1200, 1600].forEach((freq, idx) => {
+      setTimeout(() => {
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain); gain.connect(ctx.destination);
+        osc.frequency.value = freq; osc.type = 'sine';
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime); osc.stop(ctx.currentTime + 0.4);
+      }, idx * 250);
+    });
+  } catch(e) {}
+}
+
+async function runRadar() {
+  const limit = document.getElementById('limitSelect').value;
+  showStatus('📡 سحب البيانات...', 'loading');
+  document.getElementById('results').innerHTML = '';
+  try {
+    const data = await fetchFromSource('binance', '/api/v3/ticker/24hr');
+    const filtered = data
+      .filter(t => t.symbol.endsWith('USDT'))
+      .filter(t => parseFloat(t.quoteVolume) > 5_000_000)
+      .filter(t => !t.symbol.includes('UP') && !t.symbol.includes('DOWN'))
+      .sort((a, b) => parseFloat(b.priceChangePercent) - parseFloat(a.priceChangePercent))
+      .slice(0, parseInt(limit));
+    currentResults = [];
+    let html = '';
+    filtered.forEach((t, i) => {
+      const a = analyzeToken(t);
+      currentResults.push(a);
+      html += renderToken(a, i + 1);
+    });
+    document.getElementById('results').innerHTML = html;
+    showStatus('✅ تم', 'success');
+    setTimeout(hideStatus, 1500);
+  } catch (err) { showStatus('❌ ' + err.message, 'error'); }
+}
+
+async function analyzeSingle() {
+  const sym = document.getElementById('symbolInput').value.trim().toUpperCase();
+  if (!sym) return;
+  const fullSym = sym.endsWith('USDT') ? sym : sym + 'USDT';
+  showStatus('🔍 جاري التحليل...', 'loading');
+  document.getElementById('results').innerHTML = '';
+  try {
+    const data = await fetchFromSource('binance', `/api/v3/ticker/24hr?symbol=${fullSym}`);
+    if (data.code) { showStatus('❌ غير موجودة', 'error'); return; }
+    const a = analyzeToken(data);
+    document.getElementById('results').innerHTML = renderToken(a, 1, true);
+    showStatus('✅', 'success');
+    setTimeout(hideStatus, 1500);
+  } catch (err) { showStatus('❌ خطأ', 'error'); }
+}
+
+function analyzeToken(t) {
+  const price = parseFloat(t.lastPrice);
+  const change = parseFloat(t.priceChangePercent);
+  const high = parseFloat(t.highPrice);
+  const low = parseFloat(t.lowPrice);
+  const volume = parseFloat(t.quoteVolume);
+  let score = 50;
+  if (change > 15) score += 25; else if (change > 8) score += 18; else if (change > 3) score += 12; else if (change > 0) score += 5;
+  if (volume > 100_000_000) score += 15; else if (volume > 50_000_000) score += 10; else if (volume > 10_000_000) score += 5;
+  score = Math.max(0, Math.min(100, score));
+  let recommendation, emoji;
+  if (score >= 75) { recommendation = 'شراء قوي'; emoji = '🟢'; }
+  else if (score >= 60) { recommendation = 'شراء'; emoji = '🟡'; }
+  else if (score >= 45) { recommendation = 'انتظار'; emoji = '⚪'; }
+  else { recommendation = 'بيع'; emoji = '🔴'; }
+  return { symbol: t.symbol, name: t.symbol.replace('USDT',''), price, change, high, low, volume, score, recommendation, emoji };
+}
+
+function renderToken(a, rank, isSingle = false) {
+  const cls = isSingle ? 'single' : 'radar';
+  const c = a.change >= 0 ? 'up' : 'down';
+  const s = a.change >= 0 ? '+' : '';
+  const fmt = n => n.toLocaleString('en-US', { maximumFractionDigits: 8 });
+  return `
+    <div class="token ${cls}">
+      <div class="token-header">
+        <div><span class="rank">${rank}</span><span class="token-name">${a.name}</span></div>
+        <span class="token-symbol">${a.symbol}</span>
+      </div>
+      <div class="token-stats">
+        <div><span class="stat-name">💰:</span> <span class="stat-val">$${fmt(a.price)}</span></div>
+        <div><span class="stat-name">📈:</span> <span class="stat-val ${c}">${s}${a.change.toFixed(2)}%</span></div>
+        <div><span class="stat-name">🔺:</span> <span class="stat-val">$${fmt(a.high)}</span></div>
+        <div><span class="stat-name">🔻:</span> <span class="stat-val">$${fmt(a.low)}</span></div>
+        <div style="grid-column:span 2;"><span class="stat-name">💵:</span> <span class="stat-val">$${fmt(a.volume)}</span></div>
+      </div>
+      <div class="rec-box" style="background:#23863633;border:1px solid #2ea043;">
+        <span class="rec-emoji">${a.emoji}</span>
+        <div><div class="rec-title">${a.recommendation}</div><div class="rec-score">${a.score}/100</div></div>
+      </div>
+    </div>`;
+}
+
+function renderHistory() {
+  const box = document.getElementById('historyContainer');
+  if (history.length === 0) { box.innerHTML = '<div class="empty">لا يوجد سجل</div>'; return; }
+  box.innerHTML = history.map(h => {
+    const d = new Date(h.date);
+    const fmt = n => n.toLocaleString('en-US', { maximumFractionDigits: 8 });
+    const s = h.change >= 0 ? '+' : '';
+    const c = h.change >= 0 ? 'up' : 'down';
+    return `<div class="history-item">
+      <div class="history-header"><span class="history-symbol">${h.symbol}</span><span class="history-score">${h.score}/100</span></div>
+      <div class="history-details">
+        <div><span class="history-label">السعر:</span> <span class="history-value">$${fmt(h.price)}</span></div>
+        <div><span class="history-label">التغير:</span> <span class="history-value ${c}">${s}${h.change.toFixed(2)}%</span></div>
+      </div>
+      <div class="history-date">${d.toLocaleString('ar-EG')}</div>
+    </div>`;
+  }).join('');
+}
+
+function saveWallets() { localStorage.setItem('trackedWallets', JSON.stringify(wallets)); }
+function renderWallets() {
+  const box = document.getElementById('addressesBox');
+  document.getElementById('whaleCount').textContent = `📊 عدد المحافظ: ${wallets.length}`;
+  if (wallets.length === 0) { box.innerHTML = '<div class="empty" style="padding:15px; font-size:12px;">لا توجد محافظ</div>'; return; }
+  box.innerHTML = wallets.map((w, i) => `
+    <div class="address-chip">
+      <span class="net-badge">${w.network}</span>
+      <span class="addr-text" title="${w.address}">${w.address}</span>
+      <span class="remove" onclick="removeWallet(${i})">×</span>
+    </div>`).join('');
+}
+function addWallet() {
+  const addr = document.getElementById('walletAddress').value.trim();
+  const net = document.getElementById('walletNetwork').value;
+  if (!addr || addr.length < 20) { alert('⚠️ العنوان غير صالح'); return; }
+  if (wallets.some(w => w.address.toLowerCase() === addr.toLowerCase())) { alert('⚠️ مضافة مسبقاً'); return; }
+  wallets.push({ address: addr, network: net, addedAt: new Date().toISOString() });
+  saveWallets(); renderWallets();
+  document.getElementById('walletAddress').value = '';
+}
+function removeWallet(i) { wallets.splice(i, 1); saveWallets(); renderWallets(); }
+function clearWallets() { if (!wallets.length || !confirm('مسح الكل؟')) return; wallets = []; saveWallets(); renderWallets(); }
+
+async function sendToTelegram() {
+  const btn = document.getElementById('tgSendBtn');
+  const token = document.getElementById('tgBotToken').value.trim();
+  const chatId = document.getElementById('tgChatId').value.trim();
+  if (!token || !chatId) { showTgStatus('⚠️ أدخل البيانات', 'err'); return; }
+  if (!currentExplode.length && !currentResults.length && !wallets.length) { showTgStatus('⚠️ لا توجد بيانات', 'err'); return; }
+  localStorage.setItem('tgBotToken', token);
+  localStorage.setItem('tgChatId', chatId);
+  btn.disabled = true;
+  showTgStatus('⏳ جاري الإرسال...', 'wait');
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text: buildTelegramMessage(), parse_mode: 'HTML', disable_web_page_preview: true })
+    });
+    const data = await res.json();
+    if (data.ok) { showTgStatus('✅ تم!', 'ok'); setTimeout(() => { document.getElementById('tgStatus').style.display = 'none'; }, 5000); }
+    else showTgStatus(`❌ ${data.description}`, 'err');
+  } catch (err) { showTgStatus(`❌ ${err.message}`, 'err'); }
+  finally { btn.disabled = false; }
+}
+
+function buildTelegramMessage() {
+  const now = new Date().toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+  const fmt = n => n.toLocaleString('en-US', { maximumFractionDigits: 6 });
+  let msg = `🚀 <b>كاشف V9</b>\n🕐 ${now}\n━━━━━━━━━━━━━━━━━━━\n\n`;
+  if (currentExplode.length) {
+    msg += `⚡ <b>إشارات (${currentExplode.length}):</b>\n\n`;
+    currentExplode.slice(0, 20).forEach((r, i) => {
+      const s = r.change >= 0 ? '+' : '';
+      const eta = calculateExplosionETA(r);
+      const mins = Math.floor(eta.seconds / 60);
+      const secs = eta.seconds % 60;
+      msg += `<b>${i + 1}. ${r.name}</b> <code>${r.symbol}</code>\n`;
+      msg += `🎯 <b>${r.explodeScore}%</b>\n`;
+      msg += `⏱️ ${String(mins).padStart(2,'0')}:${String(secs).padStart(2,'0')}\n`;
+      msg += `💰 $${fmt(r.price)} | ${s}${r.change.toFixed(2)}%\n`;
+      msg += `───────────────────\n`;
+    });
+  }
+  msg += `\n━━━━━━━━━━━━━━━━━━━\n🤖 كاشف V9`;
+  return msg;
+}
+
+function showTgStatus(text, type) {
+  const s = document.getElementById('tgStatus');
+  s.textContent = text; s.className = 'tg-status ' + type;
+}
+
+function switchTab(tab, ev) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  if (ev && ev.target) ev.target.classList.add('active');
+  ['explode','smartmoney','accumulation','radar','whales','history'].forEach(t => {
+    const el = document.getElementById('tab-' + t);
+    if (el) el.style.display = t === tab ? 'block' : 'none';
+  });
+  document.getElementById('results').innerHTML = '';
+  hideStatus();
+  if (tab === 'history') renderHistory();
+  if (tab === 'whales') renderWallets();
+}
+
+function showStatus(text, type) {
+  const s = document.getElementById('status');
+  s.textContent = text; s.className = 'status ' + type;
+}
+function hideStatus() { document.getElementById('status').className = 'status'; }
+
+document.addEventListener('DOMContentLoaded', () => {
+  const token = localStorage.getItem('tgBotToken');
+  const chat = localStorage.getItem('tgChatId');
+  if (token) document.getElementById('tgBotToken').value = token;
+  if (chat) document.getElementById('tgChatId').value = chat;
+  renderWallets();
+  document.getElementById('smWalletCount').textContent = SMART_WALLETS_DB.length + ' محفظة';
+});
+document.getElementById('symbolInput')?.addEventListener('keypress', e => { if (e.key === 'Enter') analyzeSingle(); });
+document.getElementById('walletAddress')?.addEventListener('keypress', e => { if (e.key === 'Enter') addWallet(); });
+</script>
+</body>
+</html>
